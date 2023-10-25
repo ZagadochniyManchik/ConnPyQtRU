@@ -164,6 +164,7 @@ class RegWindow(QtWidgets.QWidget):
             }
             """
         )
+        self.changeTheme_button.clicked.disconnect()
         self.changeTheme_button.clicked.connect(self.change_theme_dark)
         self.changeTheme_button.setIcon(self.theme_light)
 
@@ -189,21 +190,29 @@ class RegWindow(QtWidgets.QWidget):
             }
             """
         )
+        self.changeTheme_button.clicked.disconnect()
         self.changeTheme_button.clicked.connect(self.change_theme_light)
         self.changeTheme_button.setIcon(self.theme_dark)
 
     def register(self):
+
         login = self.login_input.text()
         email = self.email_input.text()
         password = self.password_input.text()
         gender = self.gender_combo.currentText()
 
         server = ServerObject()
-        server.connect_with()
+        try:
+            server.connect_with()
+        except Exception as error:
+            print(f'{error}: Check your internet connection')
+            QtWidgets.QMessageBox.warning(self, 'Warning', f'{error}: Check your internet connection')
+            return
         server.request(
             pencode({"login": login, "email": email, "password": password, "gender": gender})
             + b'<END>' + pencode('<REGISTRATION>') + b'<END>'
         )
+
         status = server.receive()
         if status != '<SUCCESS>':
             print(status)
@@ -240,9 +249,12 @@ class RegWindow(QtWidgets.QWidget):
         self.gender_combo.hide()
         self.gender_label.hide()
         self.entryToAccount_button.setText('Зарегистрироваться')
+        self.entryToAccount_button.clicked.disconnect()
         self.entryToAccount_button.clicked.connect(self.registration_form)
         self.entryToAccount_label.setText('Нет аккаунта?')
         self.register_button.setText('Войти')
+        self.register_button.clicked.disconnect()
+        self.register_button.clicked.connect(self.login)
         self.setWindowTitle("Вход в аккаунт")
 
     def registration_form(self):
@@ -251,9 +263,12 @@ class RegWindow(QtWidgets.QWidget):
         self.gender_combo.show()
         self.gender_label.show()
         self.entryToAccount_button.setText('Войти')
+        self.entryToAccount_button.clicked.disconnect()
         self.entryToAccount_button.clicked.connect(self.login_form)
         self.entryToAccount_label.setText('Уже есть аккаунт?')
         self.register_button.setText('Зарегистрироваться')
+        self.register_button.clicked.disconnect()
+        self.register_button.clicked.connect(self.register)
         self.setWindowTitle("Регистрация")
 
 
