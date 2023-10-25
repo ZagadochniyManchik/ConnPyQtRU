@@ -19,6 +19,7 @@ def pdecode(data):
 class ServerObject:
     def __init__(self):
         self.static_data = None
+        self.data = None
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def connect_with(self):
@@ -29,7 +30,7 @@ class ServerObject:
 
     def listen_for(self):
         data = self.server.recv(1024)
-        while data != b'<NOTIFICATION-MESSAGE>':
+        while data[:22] != b'<NOTIFICATION-MESSAGE>':
             data = self.server.recv(1024)
         self.notification_handler(data.encode('utf-8'))
 
@@ -39,6 +40,15 @@ class ServerObject:
 
     def request(self, data):
         self.server.send(data)
+
+    def receive(self):
+        self.data = b''
+        while True:
+            self.data += self.server.recv(1024)
+            if self.data[-13:] == b'<END-MESSAGE>':
+                break
+        self.data = pdecode(self.data.split(b'<END>'))
+        return self.data
 
 
 class RegWindow(QtWidgets.QWidget):
@@ -188,13 +198,18 @@ class RegWindow(QtWidgets.QWidget):
         password = self.password_input.text()
         gender = self.gender_combo.currentText()
 
-        # server = ServerObject()
-        # server.connect_with()
-        # server.request(
-        #     pencode({"login": login, "email": email, "password": password, "gender": gender})
-        #     + b'<END>' + pencode('<REGISTRATION>') + b'<END>'
-        # )
-        # server.close_with()
+        server = ServerObject()
+        server.connect_with()
+        server.request(
+            pencode({"login": login, "email": email, "password": password, "gender": gender})
+            + b'<END>' + pencode('<REGISTRATION>') + b'<END>'
+        )
+        status = server.receive()
+        if status != '<SUCCESS>':
+            print(status)
+            QtWidgets.QMessageBox.warning(self, 'Warning', status)
+            return
+        server.close_with()
 
         self.main_window = MainWindow()
         self.hide()
