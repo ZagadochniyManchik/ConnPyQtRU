@@ -42,13 +42,12 @@ class ServerObject:
         self.server.send(data)
 
     def receive(self):
-        self.data = b''
-        while True:
-            self.data += self.server.recv(1024)
-            if self.data[-13:] == b'<END-MESSAGE>':
-                break
-        self.data = pdecode(self.data.split(b'<END>'))
-        return self.data
+        # self.data = b''
+        # while True:
+        #     self.data += self.server.recv(1024)
+        #     if self.data[-13:] == b'<END-MESSAGE>':
+        #         break
+        return pdecode(self.server.recv(1024))
 
 
 class RegWindow(QtWidgets.QWidget):
@@ -216,12 +215,13 @@ class RegWindow(QtWidgets.QWidget):
         status = server.receive()
         if status != '<SUCCESS>':
             print(status)
-            QtWidgets.QMessageBox.warning(self, 'Warning', status)
+            QtWidgets.QMessageBox.warning(self, 'Предупреждение', status)
             return
+        QtWidgets.QMessageBox.information(self, 'Информация', 'Аккаунт создан!\nПроизводим вход...')
         server.close_with()
 
         self.main_window = MainWindow()
-        self.hide()
+        self.destroy()
         self.main_window.show()
 
     def login(self):
@@ -237,7 +237,7 @@ class RegWindow(QtWidgets.QWidget):
         # server.close_with()
 
         self.main_window = MainWindow()
-        self.hide()
+        self.destroy()
         self.main_window.show()
 
     def close_app(self):
