@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="bg_image">
+    <file>bg_gradient.jpg</file>
+  </qresource>
+</RCC>
