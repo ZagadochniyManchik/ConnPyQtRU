@@ -4,7 +4,6 @@ import sys
 import socket
 import pickle
 
-
 threads = {}
 
 
@@ -228,13 +227,26 @@ class RegWindow(QtWidgets.QWidget):
         login = self.login_input.text()
         password = self.password_input.text()
 
-        # server = ServerObject()
-        # server.connect_with()
-        # server.request(
-        #     pencode({"login": login, "password": password}
-        #             + b'<END>' + pencode('<LOGIN>') + b'<END>')
-        # )
-        # server.close_with()
+        server = ServerObject()
+        try:
+            server.connect_with()
+        except Exception as error:
+            print(f'{error}: Check your internet connection')
+            QtWidgets.QMessageBox.warning(self, 'Warning', f'{error}: Check your internet connection')
+            return
+
+        server.request(
+            pencode({"login": login, "password": password}) +
+            b'<END>' + pencode('<LOGIN>') + b'<END>'
+        )
+
+        status = server.receive()
+        if status != '<SUCCESS>':
+            QtWidgets.QMessageBox.warning(self, 'Предупреждение', status)
+            return
+
+        QtWidgets.QMessageBox.information(self, 'Информация', 'Входим в аккаунт...')
+        server.close_with()
 
         self.main_window = MainWindow()
         self.destroy()
@@ -272,6 +284,10 @@ class RegWindow(QtWidgets.QWidget):
         self.setWindowTitle("Регистрация")
 
 
+def close_app():
+    exit()
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
@@ -286,16 +302,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.welcome_label = QtWidgets.QLabel('Главный экран')
 
         self.close_button = QtWidgets.QPushButton("Выйти")
-        self.close_button.clicked.connect(self.close_app)
+        self.close_button.clicked.connect(close_app)
 
         self.layout.addWidget(self.welcome_label)
         self.layout.addWidget(self.close_button)
 
         self.central_widget.setLayout(self.layout)
         self.setCentralWidget(self.central_widget)
-
-    def close_app(self):
-        self.close()
 
 
 def main_thread():
@@ -350,12 +363,10 @@ def main_thread():
     app.setStyleSheet(style)
     registration_form = RegWindow()
     registration_form.show()
-    # main_window = MainWindow()
-    # main_window.show()
     sys.exit(app.exec())
 
 
 if __name__ == "__main__":
-    main_thr = Thread(target=main_thread(), name='main_thread')
+    main_thr = Thread(target=main_thread(), name='main_thread', daemon=False)
     threads['main_thread'] = main_thr
     main_thr.start()
