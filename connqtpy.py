@@ -28,10 +28,11 @@ class ServerObject:
         self.request(b'CLOSE-CONNECTION')
 
     def listen_for(self):
-        data = self.server.recv(1024)
-        while data[:22] != b'<NOTIFICATION-MESSAGE>':
+        while True:
             data = self.server.recv(1024)
-        self.notification_handler(data.encode('utf-8'))
+            if data[:22] != b'<NOTIFICATION-MESSAGE>':
+                break
+        self.notification_handler(pdecode(data))
 
     def notification_handler(self, notification):
         message = notification.split(b'<END>')
@@ -47,6 +48,11 @@ class ServerObject:
         #     if self.data[-13:] == b'<END-MESSAGE>':
         #         break
         return pdecode(self.server.recv(1024))
+
+
+class NotificationHandler:
+    def __init__(self):
+        ...
 
 
 class RegWindow(QtWidgets.QWidget):
@@ -284,13 +290,12 @@ class RegWindow(QtWidgets.QWidget):
         self.setWindowTitle("Регистрация")
 
 
-def close_app():
-    exit()
-
-
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
+
+        self.server = ServerObject()
+        self.server.connect_with()
 
         self.setWindowTitle("ConnQtPy")
         self.resize(1280, 720)
@@ -309,6 +314,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.central_widget.setLayout(self.layout)
         self.setCentralWidget(self.central_widget)
+
+    def close_app(self):
+        self.server.close_with()
+        exit()
 
 
 def main_thread():
