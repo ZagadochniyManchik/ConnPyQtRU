@@ -1,3 +1,5 @@
+import time
+
 from PyQt5 import QtCore, QtGui, QtWidgets
 from threading import *
 import sys
@@ -26,7 +28,7 @@ class ServerObject:
         self.server.connect(('127.0.0.1', 25565))
 
     def close_with(self):
-        self.request(b'<CLOSE-CONNECTION><END>')
+        self.request(pencode('None') + b'<END>' + pencode('<CLOSE-CONNECTION>') + b'<END>')
 
     def listen_for(self):
         while True:
@@ -217,15 +219,15 @@ class RegWindow(QtWidgets.QWidget):
 
         status = server.receive()
         if status != '<SUCCESS>':
-            print(status)
             QtWidgets.QMessageBox.warning(self, 'Предупреждение', status)
+            server.close_with()
             return
         QtWidgets.QMessageBox.information(self, 'Информация', 'Аккаунт создан!\nПроизводим вход...')
         server.close_with()
 
-        self.main_window = MainWindow()
+        main_window = MainWindow({"login": login, "email": email, "password": password, "gender": gender})
         self.destroy()
-        self.main_window.show()
+        main_window.show()
 
     def login(self):
         login = self.login_input.text()
@@ -247,14 +249,15 @@ class RegWindow(QtWidgets.QWidget):
         status = server.receive()
         if status != '<SUCCESS>':
             QtWidgets.QMessageBox.warning(self, 'Предупреждение', status)
+            server.close_with()
             return
 
         QtWidgets.QMessageBox.information(self, 'Информация', 'Входим в аккаунт...')
         server.close_with()
 
-        self.main_window = MainWindow()
+        main_window = MainWindow({'login': login, 'password': password.hexdigest()})
         self.destroy()
-        self.main_window.show()
+        main_window.show()
 
     def close_app(self):
         self.close()
@@ -289,13 +292,17 @@ class RegWindow(QtWidgets.QWidget):
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self):
+    def __init__(self, user_data):
         super().__init__()
-        self.server = None
+        self.server = ServerObject()
+        self.server.connect_with()
+        self.user_data = user_data
 
         listen_to_server_thr = Thread(target=self.listen_to_server, name='listen_to_server', daemon=True)
         threads['listen_to_server'] = listen_to_server_thr
         listen_to_server_thr.start()
+
+        self.server.request(pencode(self.user_data) + b"<END>" + pencode("<ONLINE>") + b"<END>")
 
         self.setWindowTitle("ConnQtPy")
         self.resize(1280, 720)
@@ -306,34 +313,24 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.welcome_label = QtWidgets.QLabel('Главный экран')
 
-        self.message_label = QtWidgets.QLabel('Здесь отобразится сообщение')
-
-        self.message_input = QtWidgets.QLineEdit()
-        self.message_input.setPlaceholderText('Введите сообщение')
-
-        self.sendMessage_button = QtWidgets.QPushButton('Отправить сообщение')
-        self.sendMessage_button.clicked.connect(self.send_message)
-
         self.close_button = QtWidgets.QPushButton("Выйти")
         self.close_button.clicked.connect(self.close_app)
 
         self.layout.addWidget(self.welcome_label)
-        self.layout.addWidget(self.message_label)
-        self.layout.addWidget(self.message_input)
-        self.layout.addWidget(self.sendMessage_button)
         self.layout.addWidget(self.close_button)
 
         self.central_widget.setLayout(self.layout)
         self.setCentralWidget(self.central_widget)
 
-    def send_message(self):
-        message = self.message_input.text()
-        self.server.request(pencode(message) + b'<END>' + pencode('<SEND-MESSAGE>') + b'<END>')
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        self.server.request(pencode(self.user_data) + b"<END>" + pencode("<OFFLINE>") + b"<END>")
+        self.server.close_with()
+        time.sleep(0.5)
+        exit()
 
     def listen_to_server(self):
-        self.server = ServerObject()
-        self.server.connect_with()
         while True:
+
             status = self.server.listen_for()
             self.notification_handler(status)
 
@@ -341,12 +338,10 @@ class MainWindow(QtWidgets.QMainWindow):
         message = notification.split(b'<END>')[:-1]
         getattr(self, pdecode(message[-1]))(pdecode(message[0]))
 
-    def test(self, data):
-        print(data)
-        self.message_label.setText(data)
-
     def close_app(self):
+        self.server.request(pencode(self.user_data) + b"<END>" + pencode("<OFFLINE>") + b"<END>")
         self.server.close_with()
+        time.sleep(0.5)
         exit()
 
 
@@ -406,6 +401,7 @@ def main_thread():
 
 
 if __name__ == "__main__":
-    main_thr = Thread(target=main_thread(), name='main_thread', daemon=False)
+    main_thr = Thread(target=main_thread(), name='main_thread', daemon=True)
     threads['main_thread'] = main_thr
     main_thr.start()
+    exit()
