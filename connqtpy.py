@@ -298,39 +298,247 @@ class MainWindow(QtWidgets.QMainWindow):
         self.server.connect_with()
         self.user_data = user_data
 
+        self.setStyleSheet("""
+        QWidget{
+            background: #586376;
+        }
+        QPushButton:hover{
+            background: #D9D9D9;
+        }
+        """)
+
         listen_to_server_thr = Thread(target=self.listen_to_server, name='listen_to_server', daemon=True)
         threads['listen_to_server'] = listen_to_server_thr
         listen_to_server_thr.start()
 
         self.server.request(pencode(self.user_data) + b"<END>" + pencode("<ONLINE>") + b"<END>")
 
+        # !!! Images
+        self.logo_image = QtGui.QPixmap("images/icon_photo.png").scaled(80, 80, QtCore.Qt.KeepAspectRatio)
+        self.chat_dark = QtGui.QIcon("images/chat_dark.png")
+        self.chat_light = QtGui.QIcon("images/chat_light.png")
+        self.theme_dark = QtGui.QIcon("images/theme_dark.png")
+        self.theme_light = QtGui.QIcon("images/theme_light.png")
+        self.friends_dark = QtGui.QIcon("images/add_user_dark.png")
+        self.friends_light = QtGui.QIcon("images/add_user_light.png")
+        self.profile_light = QtGui.QIcon("images/home_light.png")
+        self.profile_dark = QtGui.QIcon("images/home_dark.png")
+        self.settings_light = QtGui.QIcon("images/settings_light.png")
+        self.settings_dark = QtGui.QIcon("images/settings_dark.png")
+        self.exit_light = QtGui.QIcon("images/exit_light.png")
+        self.exit_dark = QtGui.QIcon("images/exit_dark.png")
+        # !!! Images
+
+        # !!! Window rise
         self.setWindowTitle("ConnQtPy")
         self.resize(1280, 720)
         self.setWindowIcon(QtGui.QIcon('images/icon_photo.png'))
 
         self.central_widget = QtWidgets.QWidget()
-        self.layout = QtWidgets.QVBoxLayout()
+        self.layout = QtWidgets.QHBoxLayout()
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
-        self.welcome_label = QtWidgets.QLabel('Главный экран')
+        # !!! Menu rise
+        self.menu_widget = QtWidgets.QWidget()
+        self.menu_widget.setMaximumWidth(400)
+        self.menu_widget.setStyleSheet('background: #262D37; padding: 0; margin: 0;')
+        self.menu_layout = QtWidgets.QVBoxLayout()
+        self.menu_widget.setLayout(self.menu_layout)
+
+        # !!! Menu title rise
+        self.title_widget = QtWidgets.QWidget()
+        self.title_layout = QtWidgets.QHBoxLayout()
+        self.title_widget.setLayout(self.title_layout)
+
+        self.logo_label = QtWidgets.QLabel()
+        self.logo_label.setPixmap(self.logo_image)
+        self.title_label = QtWidgets.QLabel('\nConnQtPy')
+        self.title_label.setStyleSheet('font-size: 30px')
+
+        self.changeTheme_button = QtWidgets.QPushButton()
+        self.changeTheme_button.setIcon(self.theme_dark)
+        self.changeTheme_button.setMinimumSize(50, 50)
+        self.changeTheme_button.clicked.connect(self.change_theme_light)
+
+        self.title_layout.addWidget(self.logo_label)
+        self.title_layout.addWidget(self.title_label)
+        self.title_layout.addStretch(1)
+        self.title_layout.addWidget(self.changeTheme_button)
+        # !!! Menu title end
+
+        # !!! Menu buttons rise
+        self.menu_button_styles_dark = \
+            """
+            QPushButton{
+                text-align: left; 
+                text-padding: 5px;
+                border: 0px; 
+                border-radius: 1px;
+                background: transparent
+            }
+            QPushButton:hover{
+                background: #454A50
+            }
+            """
+        self.menu_button_styles_light = \
+            """
+            QPushButton{
+                text-align: left; 
+                text-padding: 5px;
+                border: 0px; 
+                border-radius: 1px;
+                background: transparent
+            }
+            QPushButton:hover{
+                background: #D9D9D9
+            }
+            """
+        self.profile_button = QtWidgets.QPushButton('Профиль')
+        self.profile_button.setMinimumHeight(50)
+        self.profile_button.setStyleSheet(self.menu_button_styles_dark)
+        self.profile_button.clicked.connect(self.show_profile)
+        self.profile_button.setIcon(self.profile_light)
+        self.messenger_button = QtWidgets.QPushButton('Мессенджер')
+        self.messenger_button.setMinimumHeight(50)
+        self.messenger_button.setStyleSheet(self.menu_button_styles_dark)
+        self.messenger_button.setIcon(self.chat_light)
+        self.friends_button = QtWidgets.QPushButton('Друзья')
+        self.friends_button.setMinimumHeight(50)
+        self.friends_button.setStyleSheet(self.menu_button_styles_dark)
+        self.friends_button.setIcon(self.friends_light)
+        self.settings_button = QtWidgets.QPushButton('Настройки')
+        self.settings_button.setMinimumHeight(50)
+        self.settings_button.setStyleSheet(self.menu_button_styles_dark)
+        self.settings_button.setIcon(self.settings_light)
 
         self.close_button = QtWidgets.QPushButton("Выйти")
         self.close_button.clicked.connect(self.close_app)
+        self.close_button.setMinimumHeight(50)
+        self.close_button.setStyleSheet(self.menu_button_styles_dark)
+        self.close_button.setIcon(self.exit_light)
 
+        self.menu_layout.addWidget(self.title_widget)
+        self.menu_layout.addStretch(1)
+        self.menu_layout.addWidget(self.profile_button)
+        self.menu_layout.addWidget(self.messenger_button)
+        self.menu_layout.addWidget(self.friends_button)
+        self.menu_layout.addWidget(self.settings_button)
+        self.menu_layout.addStretch(5)
+        self.menu_layout.addWidget(self.close_button)
+        # !!! Menu end
+
+        # !!! Menu windows rise
+        self.welcome_label = QtWidgets.QLabel('Главный экран')
+        self.welcome_label.setStyleSheet('background: transparent')
+
+        # !!! Profile rise
+        self.profile_widget = QtWidgets.QWidget()
+        self.profile_widget.setStyleSheet('background: transparent')
+        self.profile_layout = QtWidgets.QFormLayout()
+        self.profile_widget.setLayout(self.profile_layout)
+
+        self.profileTitle_label = QtWidgets.QLabel('Профиль')
+        self.userLogin_label = QtWidgets.QLabel(self.user_data.get('login'))
+        self.button = QtWidgets.QPushButton('Example')
+
+        self.profile_layout.addWidget(self.userLogin_label)
+        self.profile_layout.addWidget(self.button)
+        # !!! Profile end
+        # !!! Menu windows end
+
+        self.layout.addWidget(self.menu_widget)
         self.layout.addWidget(self.welcome_label)
-        self.layout.addWidget(self.close_button)
+        self.layout.addWidget(self.profile_widget)
+
+        self.profile_widget.hide()
 
         self.central_widget.setLayout(self.layout)
         self.setCentralWidget(self.central_widget)
+        # !!! Window end
+
+    def show_profile(self):
+        self.welcome_label.hide()
+        self.profile_widget.show()
+
+    def change_theme_light(self):
+        self.setStyleSheet(
+            """
+            QWidget{
+                background: #fff;
+                color: #262D37;
+            }
+            QLineEdit {
+                border: 1px solid #262D37;
+            }
+            QPushButton{
+                color: #262D37;
+                border: 1px solid #262D37;
+            }
+            QPushButton:hover{
+                background: #ECECEC;
+            }
+            QComboBox{
+                border: 1px solid #262D37;
+            }
+            """
+        )
+        self.menu_widget.setStyleSheet('background: #ECECEC')
+        self.changeTheme_button.disconnect()
+        self.changeTheme_button.clicked.connect(self.change_theme_dark)
+        self.changeTheme_button.setIcon(self.theme_light)
+        self.profile_button.setIcon(self.profile_dark)
+        self.settings_button.setIcon(self.settings_dark)
+        self.messenger_button.setIcon(self.chat_dark)
+        self.friends_button.setIcon(self.friends_dark)
+        self.close_button.setIcon(self.exit_dark)
+        for el in (self.profile_button, self.close_button, self.settings_button,
+                   self.friends_button, self.messenger_button):
+            el.setStyleSheet(self.menu_button_styles_light)
+
+    def change_theme_dark(self):
+        self.setStyleSheet(
+            """
+            QWidget{
+                background: #262D37;
+                color: #fff;
+            }
+            QLineEdit {
+                border: 1px solid #fff;
+            }
+            QPushButton{
+                color: #fff;
+                border: 1px solid #fff;
+            }
+            QPushButton:hover{
+                background: #1E232B;
+            }
+            QComboBox{
+                border: 1px solid #fff;
+            }
+            """
+        )
+        self.setStyleSheet('background: #586376')
+        self.menu_widget.setStyleSheet('background: #262D37')
+        self.changeTheme_button.disconnect()
+        self.changeTheme_button.clicked.connect(self.change_theme_light)
+        self.changeTheme_button.setIcon(self.theme_dark)
+        self.profile_button.setIcon(self.profile_light)
+        self.settings_button.setIcon(self.settings_light)
+        self.messenger_button.setIcon(self.chat_light)
+        self.friends_button.setIcon(self.friends_light)
+        self.close_button.setIcon(self.exit_light)
+        for el in (self.profile_button, self.close_button, self.settings_button,
+                   self.friends_button, self.messenger_button):
+            el.setStyleSheet(self.menu_button_styles_dark)
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         self.server.request(pencode(self.user_data) + b"<END>" + pencode("<OFFLINE>") + b"<END>")
         self.server.close_with()
-        time.sleep(0.5)
+        time.sleep(0.2)
         exit()
 
     def listen_to_server(self):
         while True:
-
             status = self.server.listen_for()
             self.notification_handler(status)
 
@@ -341,62 +549,64 @@ class MainWindow(QtWidgets.QMainWindow):
     def close_app(self):
         self.server.request(pencode(self.user_data) + b"<END>" + pencode("<OFFLINE>") + b"<END>")
         self.server.close_with()
-        time.sleep(0.5)
+        time.sleep(0.2)
         exit()
 
 
 def main_thread():
     app = QtWidgets.QApplication(sys.argv)
     style = """
-                @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Prompt:wght@600&display=swap');
-                QWidget{
-                    background: #262D37;
-                    color: #ffffff;
-                }
-                QHBoxLayout#layout_logo{
-                    padding: 10px;
-                }
-                QComboBox{
-                    border: 1px solid #ffffff;
-                    border-radius: 8px;
-                    font-size: 18px;
-                    padding: 10px;
-                }
-                QPushButton{
-                    color: #ffffff;
-                    border: 1px solid #ffffff;
-                    border-radius: 8px;
-                    font-size: 18px;
-                    padding: 10px;
-                }
-                QPushButton:hover{
-                    background: #1E232B;
-                }
-                QPushButton#self.entryToAccount{
-                    width: fit-content;
-                }
-                QLineEdit {
-                    color: #ffffff;
-                    border: 1px solid #ffffff;
-                    border-radius: 8px;
-                    padding: 10px;
-                    font-size: 18px;
-                }
-                QComboBox{
-                    color: #fff;
-                }
-                QLabel{
-                    text-align: center;
-                    font-family: 'Franklin Gothic Medium';
-                    font-size: 20px;
-                }
-                QLabel#login_label{
-                    background: #fff;
-                }
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Prompt:wght@600&display=swap');
+QWidget{
+    background: #262D37;
+    color: #ffffff;
+}
+QHBoxLayout#layout_logo{
+    padding: 10px;
+}
+QComboBox{
+    border: 1px solid #ffffff;
+    border-radius: 8px;
+    font-size: 18px;
+    padding: 10px;
+}
+QPushButton{
+    color: #ffffff;
+    border: 1px solid #ffffff;
+    border-radius: 8px;
+    font-size: 18px;
+    padding: 10px;
+}
+QPushButton:hover{
+    background: #1E232B;
+}
+QPushButton#self.entryToAccount{
+    width: fit-content;
+}
+QLineEdit {
+    color: #ffffff;
+    border: 1px solid #ffffff;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 18px;
+}
+QComboBox{
+    color: #fff;
+}
+QLabel{
+    text-align: center;
+    font-family: 'Franklin Gothic Medium';
+    font-size: 20px;
+}
+QLabel#login_label{
+    background: #fff;
+}
             """
     app.setStyleSheet(style)
     registration_form = RegWindow()
     registration_form.show()
+    # main_window = MainWindow({'login': 'Jazero', 'gender': 'Мужчина'})
+    # main_window.show()
     sys.exit(app.exec())
 
 
