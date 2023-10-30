@@ -60,9 +60,11 @@ QLabel#login_label{
 QPushButton#menuButton {
     text-align: left;
     text-padding: 5px;
+    font-size: 22px;
     border: 0px transparent; 
     border-radius: 8px;
-    background: transparent
+    background: transparent;
+    padding: 20px;
 }
 QPushButton#menuButton:hover {
     background: #1E232B;
@@ -72,6 +74,22 @@ QWidget#mainWindow {
 }
 QWidget#profileWidget {
     background: transparent
+}
+QWidget#messengerWidget {
+    background: transparent
+}
+QWidget#friendsWidget {
+    background: transparent
+}
+QWidget#settingsWidget {
+    background: transparent
+}
+QLabel#titleLabel{
+    font-size: 36px
+}
+QPushButton#logoutButton:hover{
+    background: #F83A3A;
+    color: #fff;
 }
 """
 
@@ -326,7 +344,9 @@ class RegWindow(QtWidgets.QWidget):
         main_window.show()
 
     def close_app(self):
-        self.close()
+        self.close_button.hide()
+        time.sleep(0.2)
+        exit()
 
     def login_form(self):
         self.email_input.hide()
@@ -361,15 +381,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, user_data):
         super().__init__()
 
-        self.setStyleSheet("""
-        QPushButton:hover{
-            background: #50596A;
-        }
-        QPushButton#menuButton:hover{
-            background: #1E232B;
-        }
-        """)
-
         self.server = ServerObject()
         self.server.connect_with()
         self.user_data = user_data
@@ -379,6 +390,8 @@ class MainWindow(QtWidgets.QMainWindow):
         listen_to_server_thr.start()
 
         self.server.request(pencode(self.user_data) + b"<END>" + pencode("<ONLINE>") + b"<END>")
+
+        self.remember_login()
 
         # !!! Images
         self.logo_image = QtGui.QPixmap("images/icon_photo.png").scaled(80, 80, QtCore.Qt.KeepAspectRatio)
@@ -436,26 +449,37 @@ class MainWindow(QtWidgets.QMainWindow):
         # !!! Menu buttons rise
         self.profile_button = QtWidgets.QPushButton('Профиль')
         self.profile_button.setMinimumHeight(50)
+        self.profile_button.setIconSize(QtCore.QSize(30, 30))
         self.profile_button.setObjectName('menuButton')
         self.profile_button.clicked.connect(self.show_profile)
         self.profile_button.setIcon(self.profile_light)
+
         self.messenger_button = QtWidgets.QPushButton('Мессенджер')
         self.messenger_button.setMinimumHeight(50)
+        self.messenger_button.clicked.connect(self.show_messenger)
         self.messenger_button.setIcon(self.chat_light)
+        self.messenger_button.setIconSize(QtCore.QSize(30, 30))
         self.messenger_button.setObjectName('menuButton')
+
         self.friends_button = QtWidgets.QPushButton('Друзья')
         self.friends_button.setMinimumHeight(50)
+        self.friends_button.clicked.connect(self.show_friends)
         self.friends_button.setIcon(self.friends_light)
+        self.friends_button.setIconSize(QtCore.QSize(30, 30))
         self.friends_button.setObjectName('menuButton')
+
         self.settings_button = QtWidgets.QPushButton('Настройки')
         self.settings_button.setMinimumHeight(50)
+        self.settings_button.clicked.connect(self.show_settings)
         self.settings_button.setIcon(self.settings_light)
+        self.settings_button.setIconSize(QtCore.QSize(30, 30))
         self.settings_button.setObjectName('menuButton')
 
         self.close_button = QtWidgets.QPushButton("Выйти")
         self.close_button.clicked.connect(self.close_app)
         self.close_button.setMinimumHeight(50)
         self.close_button.setIcon(self.exit_light)
+        self.close_button.setIconSize(QtCore.QSize(30, 30))
         self.close_button.setObjectName('menuButton')
 
         self.menu_layout.addWidget(self.title_widget)
@@ -479,27 +503,94 @@ class MainWindow(QtWidgets.QMainWindow):
         self.profile_widget.setLayout(self.profile_layout)
 
         self.profileTitle_label = QtWidgets.QLabel('Профиль')
+        self.profileTitle_label.setObjectName('titleLabel')
         self.userLogin_label = QtWidgets.QLabel(self.user_data.get('login'))
         self.button = QtWidgets.QPushButton('Example')
 
+        self.profile_layout.addWidget(self.profileTitle_label)
         self.profile_layout.addWidget(self.userLogin_label)
         self.profile_layout.addWidget(self.button)
         # !!! Profile end
+
+        # !!! Messenger rise
+        self.messenger_widget = QtWidgets.QWidget()
+        self.messenger_widget.setObjectName('messengerWidget')
+        self.messenger_layout = QtWidgets.QFormLayout()
+        self.messenger_widget.setLayout(self.messenger_layout)
+
+        self.messengerTitle_label = QtWidgets.QLabel('Мессенджер')
+        self.messengerTitle_label.setObjectName('titleLabel')
+
+        self.messenger_layout.addWidget(self.messengerTitle_label)
+        # !!! Messenger end
+
+        # !!! Friends rise
+        self.friends_widget = QtWidgets.QWidget()
+        self.friends_widget.setObjectName('friendsWidget')
+        self.friends_layout = QtWidgets.QFormLayout()
+        self.friends_widget.setLayout(self.friends_layout)
+
+        self.friendsTitle_label = QtWidgets.QLabel('Друзья')
+        self.friendsTitle_label.setObjectName('titleLabel')
+
+        self.friends_layout.addWidget(self.friendsTitle_label)
+        # !!! Friends end
+
+        # !!! Settings rise
+        self.settings_widget = QtWidgets.QWidget()
+        self.settings_widget.setObjectName('settingsWidget')
+        self.settings_layout = QtWidgets.QVBoxLayout()
+        self.settings_widget.setLayout(self.settings_layout)
+
+        self.settingsTitle_label = QtWidgets.QLabel('Настройки')
+        self.settingsTitle_label.setObjectName('titleLabel')
+
+        self.logout_button = QtWidgets.QPushButton('Выйти из аккаунта')
+        self.logout_button.setMaximumWidth(300)
+        self.logout_button.setObjectName('logoutButton')
+        self.logout_button.clicked.connect(self.logout)
+
+        self.settings_layout.addWidget(self.settingsTitle_label)
+        self.settings_layout.addStretch(1)
+        self.settings_layout.addWidget(self.logout_button)
+        # !!! Settings end
         # !!! Menu windows end
 
         self.layout.addWidget(self.menu_widget)
         self.layout.addWidget(self.welcome_label)
         self.layout.addWidget(self.profile_widget)
+        self.layout.addWidget(self.messenger_widget)
+        self.layout.addWidget(self.friends_widget)
+        self.layout.addWidget(self.settings_widget)
 
         self.profile_widget.hide()
+        self.messenger_widget.hide()
+        self.friends_widget.hide()
+        self.settings_widget.hide()
 
         self.central_widget.setLayout(self.layout)
         self.setCentralWidget(self.central_widget)
         # !!! Window end
 
     def show_profile(self):
-        self.welcome_label.hide()
+        for window in (self.welcome_label, self.settings_widget, self.friends_widget, self.messenger_widget):
+            window.hide()
         self.profile_widget.show()
+
+    def show_messenger(self):
+        for window in (self.welcome_label, self.settings_widget, self.friends_widget, self.profile_widget):
+            window.hide()
+        self.messenger_widget.show()
+
+    def show_friends(self):
+        for window in (self.welcome_label, self.settings_widget, self.profile_widget, self.messenger_widget):
+            window.hide()
+        self.friends_widget.show()
+
+    def show_settings(self):
+        for window in (self.welcome_label, self.profile_widget, self.friends_widget, self.messenger_widget):
+            window.hide()
+        self.settings_widget.show()
 
     def change_theme_light(self):
         self.setStyleSheet(
@@ -540,6 +631,19 @@ QPushButton#menuButton:hover {
 QWidget#profileWidget {
     background: transparent;
 }
+QWidget#messengerWidget {
+    background: transparent
+}
+QWidget#friendsWidget {
+    background: transparent
+}
+QWidget#settingsWidget {
+    background: transparent
+}
+QPushButton#logoutButton:hover{
+    background: #F83A3A;
+    color: #fff;
+}
 """)
         self.changeTheme_button.disconnect()
         self.changeTheme_button.clicked.connect(self.change_theme_dark)
@@ -572,6 +676,19 @@ QPushButton#menuButton:hover{
 QWidget#profileWidget {
     background: transparent;
 }
+QWidget#messengerWidget {
+    background: transparent
+}
+QWidget#friendsWidget {
+    background: transparent
+}
+QWidget#settingsWidget {
+    background: transparent
+}
+QPushButton#logoutButton:hover{
+    background: #F83A3A;
+    color: #fff;
+}
             """
         )
         self.changeTheme_button.disconnect()
@@ -583,12 +700,6 @@ QWidget#profileWidget {
         self.friends_button.setIcon(self.friends_light)
         self.close_button.setIcon(self.exit_light)
 
-    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
-        self.server.request(pencode(self.user_data) + b"<END>" + pencode("<OFFLINE>") + b"<END>")
-        self.server.close_with()
-        time.sleep(0.2)
-        exit()
-
     def listen_to_server(self):
         while True:
             status = self.server.listen_for()
@@ -598,7 +709,28 @@ QWidget#profileWidget {
         message = notification.split(b'<END>')[:-1]
         getattr(self, pdecode(message[-1]))(pdecode(message[0]))
 
+    def remember_login(self):
+        with open('static/lastlogin.txt', 'wb') as file:
+            file.write(b'True\n')
+            file.write(pencode(self.user_data))
+
+    def logout(self):
+        self.server.request(pencode(self.user_data) + b"<END>" + pencode("<OFFLINE>") + b"<END>")
+        self.server.close_with()
+        with open('static/lastlogin.txt', 'wb') as file:
+            file.write(b'False\n')
+        reg_form = RegWindow()
+        time.sleep(0.2)
+        self.destroy()
+        reg_form.show()
+
     def close_app(self):
+        self.server.request(pencode(self.user_data) + b"<END>" + pencode("<OFFLINE>") + b"<END>")
+        self.server.close_with()
+        time.sleep(0.2)
+        exit()
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         self.server.request(pencode(self.user_data) + b"<END>" + pencode("<OFFLINE>") + b"<END>")
         self.server.close_with()
         time.sleep(0.2)
