@@ -9,6 +9,72 @@ import hashlib
 
 threads = {}
 
+style = """
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Prompt:wght@600&display=swap');
+QWidget{
+    background: #262D37;
+    color: #ffffff;
+}
+QHBoxLayout#layout_logo{
+    padding: 10px;
+}
+QComboBox{
+    border: 1px solid #ffffff;
+    border-radius: 8px;
+    font-size: 18px;
+    padding: 10px;
+}
+QPushButton{
+    color: #ffffff;
+    border: 1px solid #ffffff;
+    border-radius: 8px;
+    font-size: 18px;
+    padding: 10px;
+    background: #262D37;
+}
+QPushButton:hover{
+    background: #1E232B;
+}
+QPushButton#self.entryToAccount{
+    width: fit-content;
+}
+QLineEdit {
+    color: #ffffff;
+    border: 1px solid #ffffff;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 18px;
+}
+QComboBox{
+    color: #fff;
+}
+QLabel{
+    text-align: center;
+    font-family: 'Franklin Gothic Medium';
+    font-size: 20px;
+    background: transparent;
+}
+QLabel#login_label{
+    background: #fff;
+}
+QPushButton#menuButton {
+    text-align: left;
+    text-padding: 5px;
+    border: 0px transparent; 
+    border-radius: 8px;
+    background: transparent
+}
+QPushButton#menuButton:hover {
+    background: #1E232B;
+}
+QWidget#mainWindow {
+    background: #586376;
+}
+QWidget#profileWidget {
+    background: transparent
+}
+"""
+
 
 def pencode(data):
     return pickle.dumps(data)
@@ -294,18 +360,19 @@ class RegWindow(QtWidgets.QWidget):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, user_data):
         super().__init__()
+
+        self.setStyleSheet("""
+        QPushButton:hover{
+            background: #50596A;
+        }
+        QPushButton#menuButton:hover{
+            background: #1E232B;
+        }
+        """)
+
         self.server = ServerObject()
         self.server.connect_with()
         self.user_data = user_data
-
-        self.setStyleSheet("""
-        QWidget{
-            background: #586376;
-        }
-        QPushButton:hover{
-            background: #D9D9D9;
-        }
-        """)
 
         listen_to_server_thr = Thread(target=self.listen_to_server, name='listen_to_server', daemon=True)
         threads['listen_to_server'] = listen_to_server_thr
@@ -335,13 +402,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowIcon(QtGui.QIcon('images/icon_photo.png'))
 
         self.central_widget = QtWidgets.QWidget()
+        self.central_widget.setObjectName('mainWindow')
         self.layout = QtWidgets.QHBoxLayout()
         self.layout.setContentsMargins(0, 0, 0, 0)
 
         # !!! Menu rise
         self.menu_widget = QtWidgets.QWidget()
         self.menu_widget.setMaximumWidth(400)
-        self.menu_widget.setStyleSheet('background: #262D37; padding: 0; margin: 0;')
         self.menu_layout = QtWidgets.QVBoxLayout()
         self.menu_widget.setLayout(self.menu_layout)
 
@@ -367,55 +434,29 @@ class MainWindow(QtWidgets.QMainWindow):
         # !!! Menu title end
 
         # !!! Menu buttons rise
-        self.menu_button_styles_dark = \
-            """
-            QPushButton{
-                text-align: left; 
-                text-padding: 5px;
-                border: 0px; 
-                border-radius: 1px;
-                background: transparent
-            }
-            QPushButton:hover{
-                background: #454A50
-            }
-            """
-        self.menu_button_styles_light = \
-            """
-            QPushButton{
-                text-align: left; 
-                text-padding: 5px;
-                border: 0px; 
-                border-radius: 1px;
-                background: transparent
-            }
-            QPushButton:hover{
-                background: #D9D9D9
-            }
-            """
         self.profile_button = QtWidgets.QPushButton('Профиль')
         self.profile_button.setMinimumHeight(50)
-        self.profile_button.setStyleSheet(self.menu_button_styles_dark)
+        self.profile_button.setObjectName('menuButton')
         self.profile_button.clicked.connect(self.show_profile)
         self.profile_button.setIcon(self.profile_light)
         self.messenger_button = QtWidgets.QPushButton('Мессенджер')
         self.messenger_button.setMinimumHeight(50)
-        self.messenger_button.setStyleSheet(self.menu_button_styles_dark)
         self.messenger_button.setIcon(self.chat_light)
+        self.messenger_button.setObjectName('menuButton')
         self.friends_button = QtWidgets.QPushButton('Друзья')
         self.friends_button.setMinimumHeight(50)
-        self.friends_button.setStyleSheet(self.menu_button_styles_dark)
         self.friends_button.setIcon(self.friends_light)
+        self.friends_button.setObjectName('menuButton')
         self.settings_button = QtWidgets.QPushButton('Настройки')
         self.settings_button.setMinimumHeight(50)
-        self.settings_button.setStyleSheet(self.menu_button_styles_dark)
         self.settings_button.setIcon(self.settings_light)
+        self.settings_button.setObjectName('menuButton')
 
         self.close_button = QtWidgets.QPushButton("Выйти")
         self.close_button.clicked.connect(self.close_app)
         self.close_button.setMinimumHeight(50)
-        self.close_button.setStyleSheet(self.menu_button_styles_dark)
         self.close_button.setIcon(self.exit_light)
+        self.close_button.setObjectName('menuButton')
 
         self.menu_layout.addWidget(self.title_widget)
         self.menu_layout.addStretch(1)
@@ -433,7 +474,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # !!! Profile rise
         self.profile_widget = QtWidgets.QWidget()
-        self.profile_widget.setStyleSheet('background: transparent')
+        self.profile_widget.setObjectName('profileWidget')
         self.profile_layout = QtWidgets.QFormLayout()
         self.profile_widget.setLayout(self.profile_layout)
 
@@ -463,26 +504,43 @@ class MainWindow(QtWidgets.QMainWindow):
     def change_theme_light(self):
         self.setStyleSheet(
             """
-            QWidget{
-                background: #fff;
-                color: #262D37;
-            }
-            QLineEdit {
-                border: 1px solid #262D37;
-            }
-            QPushButton{
-                color: #262D37;
-                border: 1px solid #262D37;
-            }
-            QPushButton:hover{
-                background: #ECECEC;
-            }
-            QComboBox{
-                border: 1px solid #262D37;
-            }
-            """
-        )
-        self.menu_widget.setStyleSheet('background: #ECECEC')
+QWidget{
+    background: #ECECEC;
+    color: #262D37;
+}
+QWidget#mainWindow{
+    background: #fff;
+}
+QLabel {
+    background: transparent;
+}
+QLineEdit {
+    border: 1px solid #262D37;
+}
+QPushButton{
+    color: #262D37;
+    border: 1px solid #262D37;
+}
+QPushButton:hover{
+    background: #D9D9D9;
+}
+QComboBox{
+    border: 1px solid #262D37;
+}
+QPushButton#menuButton {
+    text-align: left;
+    text-padding: 5px;
+    border: 0px transparent; 
+    border-radius: 8px;
+    background: transparent;
+}
+QPushButton#menuButton:hover {
+    background: #D9D9D9;
+}
+QWidget#profileWidget {
+    background: transparent;
+}
+""")
         self.changeTheme_button.disconnect()
         self.changeTheme_button.clicked.connect(self.change_theme_dark)
         self.changeTheme_button.setIcon(self.theme_light)
@@ -491,34 +549,31 @@ class MainWindow(QtWidgets.QMainWindow):
         self.messenger_button.setIcon(self.chat_dark)
         self.friends_button.setIcon(self.friends_dark)
         self.close_button.setIcon(self.exit_dark)
-        for el in (self.profile_button, self.close_button, self.settings_button,
-                   self.friends_button, self.messenger_button):
-            el.setStyleSheet(self.menu_button_styles_light)
 
     def change_theme_dark(self):
+        self.setStyleSheet(style)
         self.setStyleSheet(
             """
-            QWidget{
-                background: #262D37;
-                color: #fff;
-            }
-            QLineEdit {
-                border: 1px solid #fff;
-            }
-            QPushButton{
-                color: #fff;
-                border: 1px solid #fff;
-            }
-            QPushButton:hover{
-                background: #1E232B;
-            }
-            QComboBox{
-                border: 1px solid #fff;
-            }
+QWidget {
+    background: #262D37;
+}
+QWidget#mainWindow{
+    background: #586376; 
+}
+QLabel {
+    background: transparent;
+}
+QPushButton:hover{
+    background: #50596A;
+}
+QPushButton#menuButton:hover{
+    background: #1E232B;
+}
+QWidget#profileWidget {
+    background: transparent;
+}
             """
         )
-        self.setStyleSheet('background: #586376')
-        self.menu_widget.setStyleSheet('background: #262D37')
         self.changeTheme_button.disconnect()
         self.changeTheme_button.clicked.connect(self.change_theme_light)
         self.changeTheme_button.setIcon(self.theme_dark)
@@ -527,9 +582,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.messenger_button.setIcon(self.chat_light)
         self.friends_button.setIcon(self.friends_light)
         self.close_button.setIcon(self.exit_light)
-        for el in (self.profile_button, self.close_button, self.settings_button,
-                   self.friends_button, self.messenger_button):
-            el.setStyleSheet(self.menu_button_styles_dark)
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         self.server.request(pencode(self.user_data) + b"<END>" + pencode("<OFFLINE>") + b"<END>")
@@ -553,60 +605,26 @@ class MainWindow(QtWidgets.QMainWindow):
         exit()
 
 
+def last_login():
+    data = []
+    with open('static/lastlogin.txt', 'rb') as file:
+        data.extend(file.readlines())
+    if data[0] == b'True\n':
+        return pdecode(data[-1])
+    else:
+        return None
+
+
 def main_thread():
     app = QtWidgets.QApplication(sys.argv)
-    style = """
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Prompt:wght@600&display=swap');
-QWidget{
-    background: #262D37;
-    color: #ffffff;
-}
-QHBoxLayout#layout_logo{
-    padding: 10px;
-}
-QComboBox{
-    border: 1px solid #ffffff;
-    border-radius: 8px;
-    font-size: 18px;
-    padding: 10px;
-}
-QPushButton{
-    color: #ffffff;
-    border: 1px solid #ffffff;
-    border-radius: 8px;
-    font-size: 18px;
-    padding: 10px;
-}
-QPushButton:hover{
-    background: #1E232B;
-}
-QPushButton#self.entryToAccount{
-    width: fit-content;
-}
-QLineEdit {
-    color: #ffffff;
-    border: 1px solid #ffffff;
-    border-radius: 8px;
-    padding: 10px;
-    font-size: 18px;
-}
-QComboBox{
-    color: #fff;
-}
-QLabel{
-    text-align: center;
-    font-family: 'Franklin Gothic Medium';
-    font-size: 20px;
-}
-QLabel#login_label{
-    background: #fff;
-}
-            """
     app.setStyleSheet(style)
-    registration_form = RegWindow()
-    registration_form.show()
-    # main_window = MainWindow({'login': 'Jazero', 'gender': 'Мужчина'})
-    # main_window.show()
+    status = last_login()
+    if status is None:
+        registration_form = RegWindow()
+        registration_form.show()
+    else:
+        main_window = MainWindow(status)
+        main_window.show()
     sys.exit(app.exec())
 
 
