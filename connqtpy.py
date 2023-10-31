@@ -131,7 +131,7 @@ class ServerObject:
         #     self.data += self.server.recv(1024)
         #     if self.data[-13:] == b'<END-MESSAGE>':
         #         break
-        return pdecode(self.server.recv(1024))
+        return pdecode(self.server.recv(2048))
 
 
 class NotificationHandler:
@@ -381,6 +381,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, user_data):
         super().__init__()
 
+        self.status = None
         self.server = ServerObject()
         self.server.connect_with()
         self.user_data = user_data
@@ -390,6 +391,9 @@ class MainWindow(QtWidgets.QMainWindow):
         listen_to_server_thr.start()
 
         self.server.request(pencode(self.user_data) + b"<END>" + pencode("<ONLINE>") + b"<END>")
+        # self.server.request(pencode(self.user_data) + b"<END>" + pencode("<SEND-USER-DATA>") + b"<END>")
+        # self.user_data = self.server.receive()
+        # print(self.user_data)
 
         self.remember_login()
 
@@ -407,6 +411,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.settings_dark = QtGui.QIcon("images/settings_dark.png")
         self.exit_light = QtGui.QIcon("images/exit_light.png")
         self.exit_dark = QtGui.QIcon("images/exit_dark.png")
+        self.hideMenu_light = QtGui.QIcon("images/hide_menu_light.png")
+        self.hideMenu_dark = QtGui.QIcon("images/hide_menu_dark.png")
+        self.showMenu_light = QtGui.QIcon("images/show_menu_light.png")
+        self.showMenu_dark = QtGui.QIcon("images/show_menu_dark.png")
         # !!! Images
 
         # !!! Window rise
@@ -420,10 +428,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layout.setContentsMargins(0, 0, 0, 0)
 
         # !!! Menu rise
-        self.menu_widget = QtWidgets.QWidget()
+        self.menu_widget = QtWidgets.QFrame()
         self.menu_widget.setMaximumWidth(400)
         self.menu_layout = QtWidgets.QVBoxLayout()
         self.menu_widget.setLayout(self.menu_layout)
+
+        self.menu_animation = QtCore.QPropertyAnimation(self.menu_widget, b'geometry')
+        self.menu_animation.setDuration(200)
 
         # !!! Menu title rise
         self.title_widget = QtWidgets.QWidget()
@@ -437,12 +448,24 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.changeTheme_button = QtWidgets.QPushButton()
         self.changeTheme_button.setIcon(self.theme_dark)
-        self.changeTheme_button.setMinimumSize(50, 50)
+        self.changeTheme_button.setIconSize(QtCore.QSize(25, 25))
         self.changeTheme_button.clicked.connect(self.change_theme_light)
+
+        self.hideMenu_button = QtWidgets.QPushButton()
+        self.hideMenu_button.setIconSize(QtCore.QSize(25, 25))
+        self.hideMenu_button.clicked.connect(self.hide_menu)
+        self.hideMenu_button.setIcon(self.hideMenu_light)
+
+        self.showMenu_button = QtWidgets.QPushButton()
+        self.showMenu_button.setIconSize(QtCore.QSize(25, 25))
+        self.showMenu_button.clicked.connect(self.show_menu)
+        self.showMenu_button.setIcon(self.showMenu_light)
+        self.showMenu_button.hide()
 
         self.title_layout.addWidget(self.logo_label)
         self.title_layout.addWidget(self.title_label)
         self.title_layout.addStretch(1)
+        self.title_layout.addWidget(self.hideMenu_button)
         self.title_layout.addWidget(self.changeTheme_button)
         # !!! Menu title end
 
@@ -483,6 +506,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.close_button.setObjectName('menuButton')
 
         self.menu_layout.addWidget(self.title_widget)
+        self.menu_layout.addWidget(self.showMenu_button)
         self.menu_layout.addStretch(1)
         self.menu_layout.addWidget(self.profile_button)
         self.menu_layout.addWidget(self.messenger_button)
@@ -572,6 +596,36 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.central_widget)
         # !!! Window end
 
+    def hide_menu(self):
+        self.showMenu_button.show()
+        self.menu_animation.setStartValue(QtCore.QRect(self.menu_widget.x(), self.menu_widget.y(),
+                                                       400, self.menu_widget.height()))
+        self.menu_animation.setEndValue(QtCore.QRect(self.menu_widget.x(), self.menu_widget.y(),
+                                                     93, self.menu_widget.height()))
+        self.menu_animation.start()
+        self.menu_animation.finished.connect(lambda: self.set_menu(93))
+        self.changeTheme_button.hide()
+        self.title_label.hide()
+        self.logo_label.setPixmap(self.logo_image.scaled(50, 50))
+        self.hideMenu_button.hide()
+
+    def set_menu(self, value):
+        self.menu_widget.setMaximumWidth(value)
+        self.menu_animation.finished.disconnect()
+
+    def show_menu(self):
+        self.changeTheme_button.show()
+        self.menu_animation.setStartValue(QtCore.QRect(self.menu_widget.x(), self.menu_widget.y(),
+                                                       93, self.menu_widget.height()))
+        self.menu_animation.setEndValue(QtCore.QRect(self.menu_widget.x(), self.menu_widget.y(),
+                                                     400, self.menu_widget.height()))
+        self.menu_animation.start()
+        self.menu_widget.setMaximumWidth(400)
+        self.title_label.show()
+        self.logo_label.setPixmap(self.logo_image.scaled(80, 80))
+        self.showMenu_button.hide()
+        self.hideMenu_button.show()
+
     def show_profile(self):
         for window in (self.welcome_label, self.settings_widget, self.friends_widget, self.messenger_widget):
             window.hide()
@@ -648,6 +702,8 @@ QPushButton#logoutButton:hover{
         self.changeTheme_button.disconnect()
         self.changeTheme_button.clicked.connect(self.change_theme_dark)
         self.changeTheme_button.setIcon(self.theme_light)
+        self.showMenu_button.setIcon(self.showMenu_dark)
+        self.hideMenu_button.setIcon(self.hideMenu_dark)
         self.profile_button.setIcon(self.profile_dark)
         self.settings_button.setIcon(self.settings_dark)
         self.messenger_button.setIcon(self.chat_dark)
@@ -694,6 +750,8 @@ QPushButton#logoutButton:hover{
         self.changeTheme_button.disconnect()
         self.changeTheme_button.clicked.connect(self.change_theme_light)
         self.changeTheme_button.setIcon(self.theme_dark)
+        self.showMenu_button.setIcon(self.showMenu_light)
+        self.hideMenu_button.setIcon(self.hideMenu_light)
         self.profile_button.setIcon(self.profile_light)
         self.settings_button.setIcon(self.settings_light)
         self.messenger_button.setIcon(self.chat_light)
