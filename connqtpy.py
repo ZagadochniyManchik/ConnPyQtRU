@@ -6,14 +6,22 @@ import sys
 import socket
 import pickle
 import hashlib
+import keyboard
 
 threads = {}
 
 style = """
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Prompt:wght@600&display=swap');
+QHBoxLayout{
+    border: 1px solid #fff;
+    border-radius: 12px;
+}
 QWidget{
     background: #262D37;
     color: #ffffff;
+}
+QWidget#menuWidget {
+    border-right: 1px solid #fff;
 }
 QHBoxLayout#layout_logo{
     padding: 10px;
@@ -57,6 +65,24 @@ QLabel{
 QLabel#login_label{
     background: #fff;
 }
+QPushButton#userName {
+    font-size: 26px;
+    text-align: center;
+    background: transparent;
+    border: 0px transparent;
+}
+QPushButton#userName:hover {
+    background: transparent;
+}
+QPushButton#userStatus {
+    font-size: 20px;
+    text-align: center;
+    background: transparent;
+    border: 0px transparent;
+}
+QPushButton#userStatus:hover {
+    background: transparent;
+}
 QPushButton#menuButton {
     text-align: left;
     text-padding: 5px;
@@ -71,6 +97,14 @@ QPushButton#menuButton:hover {
 }
 QWidget#mainWindow {
     background: #586376;
+}
+QWidget#profileAddressWidget {
+    border: 1px solid #fff;
+    border-radius: 8px;
+}
+QWidget#profileMainInfoWidget {
+    border: 1px solid #fff;
+    border-radius: 8px;
 }
 QWidget#profileWidget {
     background: transparent
@@ -90,6 +124,9 @@ QLabel#titleLabel{
 QPushButton#logoutButton:hover{
     background: #F83A3A;
     color: #fff;
+}
+QLabel#userPfp {
+    border: 0px transparent;
 }
 """
 
@@ -145,6 +182,7 @@ class RegWindow(QtWidgets.QWidget):
 
         self.setWindowTitle("Регистрация")
         self.resize(475, 625)
+        self.setMaximumSize(3000, 3000)
         self.setWindowIcon(QtGui.QIcon('images/icon_photo.png'))
 
         self.logo_image = QtGui.QPixmap("images/icon_photo.png").scaled(64, 64, QtCore.Qt.KeepAspectRatio)
@@ -381,23 +419,35 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, user_data):
         super().__init__()
 
+        self.name = None
+        self.request_status = None
+        self.allowed_methods = {
+            '<SET-USER-DATA>': 'set_user_data',
+            '<SET-REQUEST-STATUS>': 'set_request_status',
+            '<SET-USER-SOCIAL>': 'set_user_social'
+        }
+
         self.status = None
         self.server = ServerObject()
         self.server.connect_with()
         self.user_data = user_data
+        self.user_social = None
 
         listen_to_server_thr = Thread(target=self.listen_to_server, name='listen_to_server', daemon=True)
         threads['listen_to_server'] = listen_to_server_thr
         listen_to_server_thr.start()
 
         self.server.request(pencode(self.user_data) + b"<END>" + pencode("<ONLINE>") + b"<END>")
-        # self.server.request(pencode(self.user_data) + b"<END>" + pencode("<SEND-USER-DATA>") + b"<END>")
-        # self.user_data = self.server.receive()
-        # print(self.user_data)
+        time.sleep(1)
+        self.server.request(pencode(self.user_data) + b"<END>" + pencode("<SEND-USER-DATA>") + b"<END>")
+        time.sleep(1)
+        self.server.request(pencode(self.user_data) + b"<END>" + pencode('<SEND-USER-SOCIAL>') + b"<END>")
+        time.sleep(1)
+        print(self.user_social)
 
         self.remember_login()
 
-        # !!! Images
+        # !!! Images rise
         self.logo_image = QtGui.QPixmap("images/icon_photo.png").scaled(80, 80, QtCore.Qt.KeepAspectRatio)
         self.chat_dark = QtGui.QIcon("images/chat_dark.png")
         self.chat_light = QtGui.QIcon("images/chat_light.png")
@@ -415,7 +465,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.hideMenu_dark = QtGui.QIcon("images/hide_menu_dark.png")
         self.showMenu_light = QtGui.QIcon("images/show_menu_light.png")
         self.showMenu_dark = QtGui.QIcon("images/show_menu_dark.png")
-        # !!! Images
+
+        self.userPfp_image = QtGui.QPixmap("images/pfp_image_standard.png").scaled(180, 180)
+        self.userPfp_image = self.round_image(self.userPfp_image)
+        # !!! Images end
 
         # !!! Window rise
         self.setWindowTitle("ConnQtPy")
@@ -429,6 +482,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # !!! Menu rise
         self.menu_widget = QtWidgets.QFrame()
+        self.menu_widget.setObjectName('menuWidget')
         self.menu_widget.setMaximumWidth(400)
         self.menu_layout = QtWidgets.QVBoxLayout()
         self.menu_widget.setLayout(self.menu_layout)
@@ -526,14 +580,87 @@ class MainWindow(QtWidgets.QMainWindow):
         self.profile_layout = QtWidgets.QFormLayout()
         self.profile_widget.setLayout(self.profile_layout)
 
+        # !!! Profile address rise
+        self.profileAddress_widget = QtWidgets.QWidget()
+        self.profileAddress_widget.setObjectName('profileAddressWidget')
+        self.profileAddress_layout = QtWidgets.QHBoxLayout()
+        self.profileAddress_widget.setLayout(self.profileAddress_layout)
+
         self.profileTitle_label = QtWidgets.QLabel('Профиль')
         self.profileTitle_label.setObjectName('titleLabel')
-        self.userLogin_label = QtWidgets.QLabel(self.user_data.get('login'))
-        self.button = QtWidgets.QPushButton('Example')
 
-        self.profile_layout.addWidget(self.profileTitle_label)
-        self.profile_layout.addWidget(self.userLogin_label)
-        self.profile_layout.addWidget(self.button)
+        self.userLogin_label = QtWidgets.QLabel(f"login: {self.user_data.get('login')}")
+        self.userID_label = QtWidgets.QLabel(f"ID: {self.user_data.get('id')} |")
+
+        self.profileAddress_layout.addWidget(self.profileTitle_label)
+        self.profileAddress_layout.addStretch(1)
+        self.profileAddress_layout.addWidget(self.userID_label)
+        self.profileAddress_layout.addWidget(self.userLogin_label)
+        # !!! Profile address end
+
+        # !!! Profile main info rise
+        self.profileMainInfo_widget = QtWidgets.QWidget()
+        self.profileMainInfo_widget.setObjectName('profileMainInfoWidget')
+        self.profileMainInfo_layout = QtWidgets.QVBoxLayout()
+        self.profileMainInfo_widget.setLayout(self.profileMainInfo_layout)
+
+        self.userPfp_label = QtWidgets.QLabel()
+        self.userPfp_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        
+        self.userPfp_label.setObjectName('userPfp')
+        self.userPfp_label.setPixmap(self.userPfp_image)
+
+        self.userName_label = QtWidgets.QPushButton(f"{self.user_data.get('name')}")
+        self.userName_label.setObjectName('userName')
+        self.userName_label.clicked.connect(self.change_user_name)
+
+        self.userNameEntry_widget = QtWidgets.QWidget()
+        self.userNameEntry_widget.setObjectName('profileWidget')
+        self.userNameEntry_layout = QtWidgets.QHBoxLayout()
+        self.userNameEntry_widget.setLayout(self.userNameEntry_layout)
+        self.userName_input = QtWidgets.QLineEdit()
+        self.userName_input.setPlaceholderText('Введите новое имя')
+        self.userName_input.setMinimumWidth(300)
+        self.userName_input.hide()
+        self.confirm_button = QtWidgets.QPushButton('OK')
+        self.confirm_button.clicked.connect(self.get_user_name)
+        self.confirm_button.hide()
+
+        self.userNameEntry_layout.addStretch(1)
+        self.userNameEntry_layout.addWidget(self.userName_label)
+        self.userNameEntry_layout.addWidget(self.userName_input)
+        self.userNameEntry_layout.addWidget(self.confirm_button)
+        self.userNameEntry_layout.addStretch(1)
+
+        self.userStatus_label = QtWidgets.QPushButton(f"{self.user_data.get('status')}")
+        self.userStatus_label.setObjectName('userStatus')
+        self.userStatus_label.clicked.connect(self.change_user_status)
+
+        self.userStatusEntry_widget = QtWidgets.QWidget()
+        self.userStatusEntry_widget.setObjectName('profileWidget')
+        self.userStatusEntry_layout = QtWidgets.QHBoxLayout()
+        self.userStatusEntry_widget.setLayout(self.userStatusEntry_layout)
+        self.userStatus_input = QtWidgets.QLineEdit()
+        self.userStatus_input.setPlaceholderText('Введите новый статус')
+        self.userStatus_input.setMinimumWidth(300)
+        self.userStatus_input.hide()
+        self.confirmStatus_button = QtWidgets.QPushButton('OK')
+        self.confirmStatus_button.clicked.connect(self.get_user_status)
+        self.confirmStatus_button.hide()
+
+        self.userStatusEntry_layout.addStretch(1)
+        self.userStatusEntry_layout.addWidget(self.userStatus_label)
+        self.userStatusEntry_layout.addWidget(self.userStatus_input)
+        self.userStatusEntry_layout.addWidget(self.confirmStatus_button)
+        self.userStatusEntry_layout.addStretch(1)
+
+        self.profileMainInfo_layout.addWidget(self.userPfp_label)
+        self.profileMainInfo_layout.addWidget(self.userNameEntry_widget)
+        self.profileMainInfo_layout.addWidget(self.userStatusEntry_widget)
+        # !!! Profile Main Info end
+
+        self.profile_layout.addRow(self.profileAddress_widget)
+        self.profile_layout.addRow(self.profileMainInfo_widget)
         # !!! Profile end
 
         # !!! Messenger rise
@@ -551,32 +678,84 @@ class MainWindow(QtWidgets.QMainWindow):
         # !!! Friends rise
         self.friends_widget = QtWidgets.QWidget()
         self.friends_widget.setObjectName('friendsWidget')
-        self.friends_layout = QtWidgets.QFormLayout()
+        self.friends_layout = QtWidgets.QGridLayout()
         self.friends_widget.setLayout(self.friends_layout)
 
         self.friendsTitle_label = QtWidgets.QLabel('Друзья')
         self.friendsTitle_label.setObjectName('titleLabel')
 
-        self.friends_layout.addWidget(self.friendsTitle_label)
+        self.addFriend_input = QtWidgets.QLineEdit()
+        self.addFriend_input.setPlaceholderText('Введите логин или ID, того, кого хотите добавить...')
+
+        self.confirmAddFriend_button = QtWidgets.QPushButton('OK')
+
+        self.friendsList_widget = QtWidgets.QWidget()
+        self.friendsList_layout = QtWidgets.QVBoxLayout()
+        self.friendsList_widget.setLayout(self.friendsList_layout)
+        self.friendsList_scrollbar = QtWidgets.QScrollArea()
+        self.friendsList_scrollbar.setMaximumSize(2000, 8000)
+        self.display_friends()
+        self.friendsList_scrollbar.setWidget(self.friendsList_widget)
+
+        self.friends_layout.addWidget(self.friendsTitle_label, 0, 0)
+        self.friends_layout.addWidget(self.addFriend_input, 1, 0)
+        self.friends_layout.addWidget(self.confirmAddFriend_button, 1, 1)
+        self.friends_layout.addWidget(self.friendsList_scrollbar, 2, 0, 1, 2)
+        self.friends_layout.setRowStretch(2, 1)
         # !!! Friends end
 
         # !!! Settings rise
         self.settings_widget = QtWidgets.QWidget()
         self.settings_widget.setObjectName('settingsWidget')
-        self.settings_layout = QtWidgets.QVBoxLayout()
+        self.settings_layout = QtWidgets.QGridLayout()
         self.settings_widget.setLayout(self.settings_layout)
 
         self.settingsTitle_label = QtWidgets.QLabel('Настройки')
         self.settingsTitle_label.setObjectName('titleLabel')
 
+        self.changeLogin_button = QtWidgets.QPushButton('Сменить логин')
+        self.changeLogin_button.setMinimumWidth(225)
+        self.changeLogin_button.clicked.connect(self.change_user_login)
+        self.changeLogin_input = QtWidgets.QLineEdit()
+        self.changeLogin_input.setPlaceholderText('Введите новый логин...')
+        self.changeLogin_input.setMinimumWidth(250)
+        self.changeLogin_input.hide()
+        self.confirmLogin_button = QtWidgets.QPushButton('OK')
+        self.confirmLogin_button.clicked.connect(self.get_user_login)
+        self.confirmLogin_button.hide()
+
+        self.changePassword_button = QtWidgets.QPushButton('Сменить пароль')
+        self.changePassword_button.setMinimumWidth(225)
+        self.changePassword_button.clicked.connect(self.change_user_password)
+        self.changePassword_input = QtWidgets.QLineEdit()
+        self.changePassword_input.setPlaceholderText('Введите новый пароль...')
+        self.changePassword_input.setMinimumWidth(250)
+        self.changePassword_input.hide()
+        self.confirmPassword_button = QtWidgets.QPushButton('OK')
+        self.confirmPassword_button.clicked.connect(self.get_user_password)
+        self.confirmPassword_button.hide()
+
         self.logout_button = QtWidgets.QPushButton('Выйти из аккаунта')
-        self.logout_button.setMaximumWidth(300)
+        self.logout_button.setMinimumWidth(225)
         self.logout_button.setObjectName('logoutButton')
         self.logout_button.clicked.connect(self.logout)
 
-        self.settings_layout.addWidget(self.settingsTitle_label)
-        self.settings_layout.addStretch(1)
-        self.settings_layout.addWidget(self.logout_button)
+        self.deleteAccount_button = QtWidgets.QPushButton('Удалить аккаунт')
+        self.deleteAccount_button.setMinimumWidth(225)
+        self.deleteAccount_button.setObjectName('logoutButton')
+
+        self.settings_layout.addWidget(self.settingsTitle_label, 0, 0)
+        self.settings_layout.setColumnStretch(5, 1)
+        self.settings_layout.setRowStretch(1, 1)
+        self.settings_layout.addWidget(self.changeLogin_button, 2, 0)
+        self.settings_layout.addWidget(self.changeLogin_input, 2, 1)
+        self.settings_layout.addWidget(self.confirmLogin_button, 2, 2)
+        self.settings_layout.addWidget(self.changePassword_button, 3, 0)
+        self.settings_layout.addWidget(self.changePassword_input, 3, 1)
+        self.settings_layout.addWidget(self.confirmPassword_button, 3, 2)
+        self.settings_layout.setRowStretch(4, 2)
+        self.settings_layout.addWidget(self.logout_button, 5, 0)
+        self.settings_layout.addWidget(self.deleteAccount_button, 5, 1)
         # !!! Settings end
         # !!! Menu windows end
 
@@ -595,6 +774,165 @@ class MainWindow(QtWidgets.QMainWindow):
         self.central_widget.setLayout(self.layout)
         self.setCentralWidget(self.central_widget)
         # !!! Window end
+
+    def display_friends(self):
+        friends = [el.decode() for el in self.user_social.get('friends').split(b'<NEXT>')[:-1]]
+
+        for login in friends:
+            user_widget = QtWidgets.QWidget()
+            user_widget.setMinimumWidth(800)
+            user_layout = QtWidgets.QGridLayout()
+            user_widget.setLayout(user_layout)
+            user = QtWidgets.QLabel(login)
+            user.setObjectName('titleLabel')
+            show_user = QtWidgets.QPushButton('Показать профиль')
+
+            user_layout.addWidget(user, 0, 0)
+            user_layout.addWidget(show_user, 0, 2)
+            user_layout.setColumnStretch(1, 2)
+            user_layout.addWidget(QtWidgets.QLabel('Статус'), 1, 0)
+
+            self.friendsList_layout.addWidget(user_widget)
+
+    def change_user_pfp(self):
+        print('You clicked on your pfp!')
+
+    def change_user_password(self):
+        self.changePassword_button.setEnabled(False)
+        self.changePassword_input.show()
+        self.confirmPassword_button.show()
+
+    def get_user_password(self):
+        password = self.changePassword_input.text()
+        ud = self.user_data
+        ud['password'] = password
+
+        self.server.request(pencode(ud) + b"<END>" + pencode('<CHANGE-PASSWORD>') + b"<END>")
+        time.sleep(0.5)
+        status = self.request_status
+
+        if status != '<SUCCESS>':
+            QtWidgets.QMessageBox.warning(self, 'Предупреждение', status)
+            self.changePassword_button.setEnabled(True)
+            self.changePassword_input.hide()
+            self.confirmPassword_button.hide()
+            return
+
+        QtWidgets.QMessageBox.information(self, 'Информация', 'Пароль успешно сменён')
+        password = hashlib.sha512(password.encode())
+        ud['password'] = password.hexdigest()
+        self.user_data = ud
+
+        self.remember_login()
+
+        self.changePassword_button.setEnabled(True)
+        self.changePassword_input.hide()
+        self.confirmPassword_button.hide()
+
+    def change_user_login(self):
+        self.changeLogin_button.setEnabled(False)
+        self.changeLogin_input.show()
+        self.confirmLogin_button.show()
+
+    def get_user_login(self):
+        login = self.changeLogin_input.text()
+        ud = self.user_data
+        ud['login'] = login
+
+        self.server.request(pencode(ud) + b"<END>" + pencode('<CHANGE-LOGIN>') + b"<END>")
+        time.sleep(0.5)
+        status = self.request_status
+
+        if status != '<SUCCESS>':
+            QtWidgets.QMessageBox.warning(self, 'Предупреждение', status)
+            self.changeLogin_button.setEnabled(True)
+            self.changeLogin_input.hide()
+            self.confirmLogin_button.hide()
+            return
+
+        QtWidgets.QMessageBox.information(self, 'Информация', 'Логин успешно сменён')
+        self.user_data = ud
+
+        self.remember_login()
+
+        self.changeLogin_button.setEnabled(True)
+        self.userLogin_label.setText(login)
+        self.changeLogin_input.hide()
+        self.confirmLogin_button.hide()
+
+    def change_user_status(self):
+        self.userStatus_label.hide()
+        self.userStatus_input.show()
+        self.confirmStatus_button.show()
+
+    def get_user_status(self):
+        status = self.userStatus_input.text()
+
+        if "'" in status or '"' in status:
+            QtWidgets.QMessageBox.warning(self, 'Предупреждение', 'Знаки \' и \" запрещены')
+            self.userStatus_input.hide()
+            self.confirmStatus_button.hide()
+            self.userStatus_label.show()
+            return
+
+        if len(status) > 50:
+            QtWidgets.QMessageBox.warning(self, 'Предупреждение',
+                                          'Длина статуса не должна превышать 50 символов')
+            self.userStatus_input.hide()
+            self.confirmStatus_button.hide()
+            self.userStatus_label.show()
+            return
+
+        if status == '' or status.isspace():
+            self.userStatus_input.hide()
+            self.confirmStatus_button.hide()
+            self.userStatus_label.show()
+            return
+
+        self.user_data['profile_status'] = status
+        self.server.request(pencode(self.user_data) + b"<END>" + pencode('<SAVE-USER-DATA>') + b"<END>")
+
+        self.userStatus_label.setText(status)
+        self.userStatus_input.hide()
+        self.confirmStatus_button.hide()
+        self.userStatus_label.show()
+
+    def change_user_name(self):
+        self.userName_label.hide()
+        self.userName_input.show()
+        self.confirm_button.show()
+
+    def get_user_name(self):
+        name = self.userName_input.text()
+
+        if "'" in name or '"' in name:
+            QtWidgets.QMessageBox.warning(self, 'Предупреждение', 'Знаки \' и \" запрещены')
+            self.userName_input.hide()
+            self.confirm_button.hide()
+            self.userName_label.show()
+            return
+
+        if len(name) > 30:
+            QtWidgets.QMessageBox.warning(self, 'Предупреждение',
+                                          'Длина имени не должна превышать 30 символов')
+            self.userName_input.hide()
+            self.confirm_button.hide()
+            self.userName_label.show()
+            return
+
+        if name == '' or name.isspace():
+            self.userName_input.hide()
+            self.confirm_button.hide()
+            self.userName_label.show()
+            return
+
+        self.user_data['profile_name'] = name
+        self.server.request(pencode(self.user_data) + b"<END>" + pencode('<SAVE-USER-DATA>') + b"<END>")
+
+        self.userName_label.setText(name)
+        self.userName_input.hide()
+        self.confirm_button.hide()
+        self.userName_label.show()
 
     def hide_menu(self):
         self.showMenu_button.show()
@@ -630,21 +968,25 @@ class MainWindow(QtWidgets.QMainWindow):
         for window in (self.welcome_label, self.settings_widget, self.friends_widget, self.messenger_widget):
             window.hide()
         self.profile_widget.show()
+        self.profile_button.setEnabled(True)
 
     def show_messenger(self):
         for window in (self.welcome_label, self.settings_widget, self.friends_widget, self.profile_widget):
             window.hide()
         self.messenger_widget.show()
+        self.messenger_button.setEnabled(True)
 
     def show_friends(self):
         for window in (self.welcome_label, self.settings_widget, self.profile_widget, self.messenger_widget):
             window.hide()
         self.friends_widget.show()
+        self.friends_button.setEnabled(True)
 
     def show_settings(self):
         for window in (self.welcome_label, self.profile_widget, self.friends_widget, self.messenger_widget):
             window.hide()
         self.settings_widget.show()
+        self.settings_button.setEnabled(True)
 
     def change_theme_light(self):
         self.setStyleSheet(
@@ -655,6 +997,26 @@ QWidget{
 }
 QWidget#mainWindow{
     background: #fff;
+}
+QWidget#menuWidget {
+    border-right: 1px solid #262D37;
+}
+QWidget#profileAddressWidget {
+    border: 1px solid #262D37;
+    border-radius: 8px;
+}
+QWidget#profileMainInfoWidget {
+    border: 1px solid #262D37;
+    border-radius: 8px;
+}
+QPushButton#userStatus {
+    font-size: 20px;
+    text-align: center;
+    background: transparent;
+    border: 0px transparent;
+}
+QPushButton#userStatus:hover {
+    background: transparent;
 }
 QLabel {
     background: transparent;
@@ -671,6 +1033,15 @@ QPushButton:hover{
 }
 QComboBox{
     border: 1px solid #262D37;
+}
+QPushButton#userName {
+    font-size: 24px;
+    text-align: center;
+    background: transparent;
+    border: 0px transparent;
+}
+QPushButton#userName:hover {
+    background: transparent;
 }
 QPushButton#menuButton {
     text-align: left;
@@ -720,11 +1091,40 @@ QWidget {
 QWidget#mainWindow{
     background: #586376; 
 }
+QWidget#menuWidget {
+    border-right: 1px solid #fff;
+}
+QWidget#profileAddressWidget {
+    border: 1px solid #fff;
+    border-radius: 8px;
+}
+QWidget#profileMainInfoWidget {
+    border: 1px solid #fff;
+    border-radius: 8px;
+}
 QLabel {
     background: transparent;
 }
 QPushButton:hover{
     background: #50596A;
+}
+QPushButton#userName {
+    font-size: 24px;
+    text-align: center;
+    background: transparent;
+    border: 0px transparent;
+}
+QPushButton#userName:hover {
+    background: transparent;
+}
+QPushButton#userStatus {
+    font-size: 20px;
+    text-align: center;
+    background: transparent;
+    border: 0px transparent;
+}
+QPushButton#userStatus:hover {
+    background: transparent;
 }
 QPushButton#menuButton:hover{
     background: #1E232B;
@@ -758,6 +1158,19 @@ QPushButton#logoutButton:hover{
         self.friends_button.setIcon(self.friends_light)
         self.close_button.setIcon(self.exit_light)
 
+    def mousePressEvent(self, a0: QtGui.QMouseEvent) -> None:
+        print(a0.accept())
+
+    @staticmethod
+    def round_image(image):
+        rounded = QtGui.QPixmap(image.size())
+        rounded.fill(QtGui.QColor("transparent"))
+        painter = QtGui.QPainter(rounded)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setBrush(QtGui.QBrush(image))
+        painter.drawRoundedRect(image.rect(), 100, 100)
+        return rounded
+
     def listen_to_server(self):
         while True:
             status = self.server.listen_for()
@@ -765,7 +1178,16 @@ QPushButton#logoutButton:hover{
 
     def notification_handler(self, notification):
         message = notification.split(b'<END>')[:-1]
-        getattr(self, pdecode(message[-1]))(pdecode(message[0]))
+        getattr(self, self.allowed_methods.get(pdecode(message[-1])))(pdecode(message[0]))
+
+    def set_user_data(self, data):
+        self.user_data = data
+
+    def set_user_social(self, data):
+        self.user_social = data
+
+    def set_request_status(self, status):
+        self.request_status = status
 
     def remember_login(self):
         with open('static/lastlogin.txt', 'wb') as file:
@@ -784,12 +1206,14 @@ QPushButton#logoutButton:hover{
 
     def close_app(self):
         self.server.request(pencode(self.user_data) + b"<END>" + pencode("<OFFLINE>") + b"<END>")
+        time.sleep(0.2)
         self.server.close_with()
         time.sleep(0.2)
         exit()
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         self.server.request(pencode(self.user_data) + b"<END>" + pencode("<OFFLINE>") + b"<END>")
+        time.sleep(0.2)
         self.server.close_with()
         time.sleep(0.2)
         exit()
