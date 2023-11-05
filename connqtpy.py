@@ -424,7 +424,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.allowed_methods = {
             '<SET-USER-DATA>': 'set_user_data',
             '<SET-REQUEST-STATUS>': 'set_request_status',
-            '<SET-USER-SOCIAL>': 'set_user_social'
+            '<SET-USER-SOCIAL>': 'set_user_social',
+            '<LOAD-FRIENDS>': 'load_friends'
         }
 
         self.status = None
@@ -432,17 +433,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.server.connect_with()
         self.user_data = user_data
         self.user_social = None
+        self.friends = None
+        self.friends_data = {}
 
         listen_to_server_thr = Thread(target=self.listen_to_server, name='listen_to_server', daemon=True)
         threads['listen_to_server'] = listen_to_server_thr
         listen_to_server_thr.start()
 
         self.server.request(pencode(self.user_data) + b"<END>" + pencode("<ONLINE>") + b"<END>")
-        time.sleep(1)
+        time.sleep(0.1)
         self.server.request(pencode(self.user_data) + b"<END>" + pencode("<SEND-USER-DATA>") + b"<END>")
-        time.sleep(1)
+        time.sleep(0.1)
         self.server.request(pencode(self.user_data) + b"<END>" + pencode('<SEND-USER-SOCIAL>') + b"<END>")
-        time.sleep(1)
+        time.sleep(0.1)
         print(self.user_social)
 
         self.remember_login()
@@ -691,10 +694,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.friendsList_widget = QtWidgets.QWidget()
         self.friendsList_layout = QtWidgets.QVBoxLayout()
+
+        self.server.request(pencode({'method': '<LOAD-FRIENDS>'}) + b"<END>" +
+                            pencode('<CALL-CLIENT-METHOD>') + b"<END>")
+        time.sleep(0.01)
+        for widget in list(self.display_friends('static')):
+            self.friendsList_layout.addWidget(widget)
+
+        # for i in reversed(range(layout.count())):
+        #     layout.itemAt(i).widget().setParent(None)
+
         self.friendsList_widget.setLayout(self.friendsList_layout)
         self.friendsList_scrollbar = QtWidgets.QScrollArea()
         self.friendsList_scrollbar.setMaximumSize(2000, 8000)
-        self.display_friends()
         self.friendsList_scrollbar.setWidget(self.friendsList_widget)
 
         self.friends_layout.addWidget(self.friendsTitle_label, 0, 0)
@@ -774,25 +786,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.central_widget.setLayout(self.layout)
         self.setCentralWidget(self.central_widget)
         # !!! Window end
-
-    def display_friends(self):
-        friends = [el.decode() for el in self.user_social.get('friends').split(b'<NEXT>')[:-1]]
-
-        for login in friends:
-            user_widget = QtWidgets.QWidget()
-            user_widget.setMinimumWidth(800)
-            user_layout = QtWidgets.QGridLayout()
-            user_widget.setLayout(user_layout)
-            user = QtWidgets.QLabel(login)
-            user.setObjectName('titleLabel')
-            show_user = QtWidgets.QPushButton('Показать профиль')
-
-            user_layout.addWidget(user, 0, 0)
-            user_layout.addWidget(show_user, 0, 2)
-            user_layout.setColumnStretch(1, 2)
-            user_layout.addWidget(QtWidgets.QLabel('Статус'), 1, 0)
-
-            self.friendsList_layout.addWidget(user_widget)
 
     def change_user_pfp(self):
         print('You clicked on your pfp!')
@@ -889,7 +882,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.userStatus_label.show()
             return
 
-        self.user_data['profile_status'] = status
+        self.user_data['status'] = status
         self.server.request(pencode(self.user_data) + b"<END>" + pencode('<SAVE-USER-DATA>') + b"<END>")
 
         self.userStatus_label.setText(status)
@@ -926,7 +919,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.userName_label.show()
             return
 
-        self.user_data['profile_name'] = name
+        self.user_data['name'] = name
         self.server.request(pencode(self.user_data) + b"<END>" + pencode('<SAVE-USER-DATA>') + b"<END>")
 
         self.userName_label.setText(name)
@@ -1182,9 +1175,43 @@ QPushButton#logoutButton:hover{
 
     def set_user_data(self, data):
         self.user_data = data
+        print(f"UserData: \n{data}")
 
     def set_user_social(self, data):
         self.user_social = data
+        print(f"UserSocial: ")
+        print(data)
+        self.friends = [el.decode() for el in self.user_social.get('friends').split(b'<NEXT>')[:-1]]
+        print(f"UserFriends: ")
+        print(self.friends)
+        self.server.receive()
+
+    def load_friends(self, static):
+        friends = self.friends
+
+        for login in friends:
+            self.server.request(pencode({'login': login}) + b"<END>" + pencode('<SEND-FRIEND-DATA>') + b"<END>")
+            self.friends_data[login] = self.server.receive()
+
+        print('Friends Data: ')
+        print(self.friends_data)
+
+    def display_friends(self, static):
+        for friend_data in self.friends_data.values():
+            user_widget = QtWidgets.QWidget()
+            user_widget.setMinimumWidth(800)
+            user_layout = QtWidgets.QGridLayout()
+            user_widget.setLayout(user_layout)
+            user = QtWidgets.QLabel(friend_data.get('name'))
+            user.setObjectName('titleLabel')
+            show_user = QtWidgets.QPushButton('Показать профиль')
+
+            user_layout.addWidget(user, 0, 0)
+            user_layout.addWidget(show_user, 0, 2)
+            user_layout.setColumnStretch(1, 2)
+            user_layout.addWidget(QtWidgets.QLabel(friend_data.get('status')), 1, 0)
+
+            yield user_widget
 
     def set_request_status(self, status):
         self.request_status = status
