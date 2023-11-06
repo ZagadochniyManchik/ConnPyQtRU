@@ -10,125 +10,15 @@ import keyboard
 
 threads = {}
 
-style = """
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Prompt:wght@600&display=swap');
-QHBoxLayout{
-    border: 1px solid #fff;
-    border-radius: 12px;
-}
-QWidget{
-    background: #262D37;
-    color: #ffffff;
-}
-QWidget#menuWidget {
-    border-right: 1px solid #fff;
-}
-QHBoxLayout#layout_logo{
-    padding: 10px;
-}
-QComboBox{
-    border: 1px solid #ffffff;
-    border-radius: 8px;
-    font-size: 18px;
-    padding: 10px;
-}
-QPushButton{
-    color: #ffffff;
-    border: 1px solid #ffffff;
-    border-radius: 8px;
-    font-size: 18px;
-    padding: 10px;
-    background: #262D37;
-}
-QPushButton:hover{
-    background: #1E232B;
-}
-QPushButton#self.entryToAccount{
-    width: fit-content;
-}
-QLineEdit {
-    color: #ffffff;
-    border: 1px solid #ffffff;
-    border-radius: 8px;
-    padding: 10px;
-    font-size: 18px;
-}
-QComboBox{
-    color: #fff;
-}
-QLabel{
-    text-align: center;
-    font-family: 'Franklin Gothic Medium';
-    font-size: 20px;
-    background: transparent;
-}
-QLabel#login_label{
-    background: #fff;
-}
-QPushButton#userName {
-    font-size: 26px;
-    text-align: center;
-    background: transparent;
-    border: 0px transparent;
-}
-QPushButton#userName:hover {
-    background: transparent;
-}
-QPushButton#userStatus {
-    font-size: 20px;
-    text-align: center;
-    background: transparent;
-    border: 0px transparent;
-}
-QPushButton#userStatus:hover {
-    background: transparent;
-}
-QPushButton#menuButton {
-    text-align: left;
-    text-padding: 5px;
-    font-size: 22px;
-    border: 0px transparent; 
-    border-radius: 8px;
-    background: transparent;
-    padding: 20px;
-}
-QPushButton#menuButton:hover {
-    background: #1E232B;
-}
-QWidget#mainWindow {
-    background: #586376;
-}
-QWidget#profileAddressWidget {
-    border: 1px solid #fff;
-    border-radius: 8px;
-}
-QWidget#profileMainInfoWidget {
-    border: 1px solid #fff;
-    border-radius: 8px;
-}
-QWidget#profileWidget {
-    background: transparent
-}
-QWidget#messengerWidget {
-    background: transparent
-}
-QWidget#friendsWidget {
-    background: transparent
-}
-QWidget#settingsWidget {
-    background: transparent
-}
-QLabel#titleLabel{
-    font-size: 36px
-}
-QPushButton#logoutButton:hover{
-    background: #F83A3A;
-    color: #fff;
-}
-QLabel#userPfp {
-    border: 0px transparent;
-}
-"""
+style = ''
+with open('styles/main.css', 'r', encoding='utf-8') as file:
+    style += '\n'.join(file.readlines())
+style_white = ''
+with open('styles/main_white.css', 'r', encoding='utf-8') as file:
+    style_white += '\n'.join(file.readlines())
+style_black = ''
+with open('styles/main_black.css', 'r', encoding='utf-8') as file:
+    style_black += '\n'.join(file.readlines())
 
 
 def pencode(data):
@@ -469,8 +359,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.showMenu_light = QtGui.QIcon("images/show_menu_light.png")
         self.showMenu_dark = QtGui.QIcon("images/show_menu_dark.png")
 
-        self.userPfp_image = QtGui.QPixmap("images/pfp_image_standard.png").scaled(180, 180)
-        self.userPfp_image = self.round_image(self.userPfp_image)
+        try:
+            static = open("images/pfp_image.png", 'rb')
+            static.close()
+            self.userPfp_image = QtGui.QPixmap("images/pfp_image.png").scaled(180, 180)
+            self.userPfp_image = self.round_image(self.userPfp_image)
+        except FileNotFoundError:
+            self.userPfp_image = QtGui.QPixmap("images/pfp_image_standard.png").scaled(180, 180)
+            self.userPfp_image = self.round_image(self.userPfp_image)
+
         # !!! Images end
 
         # !!! Window rise
@@ -612,6 +509,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.userPfp_label.setObjectName('userPfp')
         self.userPfp_label.setPixmap(self.userPfp_image)
+        self.userPfp_label.mousePressEvent = self.change_user_pfp
 
         self.userName_label = QtWidgets.QPushButton(f"{self.user_data.get('name')}")
         self.userName_label.setObjectName('userName')
@@ -787,8 +685,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.central_widget)
         # !!! Window end
 
-    def change_user_pfp(self):
-        print('You clicked on your pfp!')
+    def change_user_pfp(self, *args, **kwargs):
+        file_name, file_type = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Выбрать файл", ".",
+            "JPEG Files(*.jpeg);;PNG Files(*.png);;")
+
+        image_bytes = b""
+        with open(file_name, 'rb') as image:
+            image_bytes += image.read()
+
+        with open("images/pfp_image.png", 'wb') as image:
+            image.write(image_bytes)
+
+        self.userPfp_image = QtGui.QPixmap(file_name).scaled(180, 180)
+        self.userPfp_image = self.round_image(self.userPfp_image)
+        self.userPfp_label.setPixmap(self.userPfp_image)
 
     def change_user_password(self):
         self.changePassword_button.setEnabled(False)
@@ -982,87 +893,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.settings_button.setEnabled(True)
 
     def change_theme_light(self):
-        self.setStyleSheet(
-            """
-QWidget{
-    background: #ECECEC;
-    color: #262D37;
-}
-QWidget#mainWindow{
-    background: #fff;
-}
-QWidget#menuWidget {
-    border-right: 1px solid #262D37;
-}
-QWidget#profileAddressWidget {
-    border: 1px solid #262D37;
-    border-radius: 8px;
-}
-QWidget#profileMainInfoWidget {
-    border: 1px solid #262D37;
-    border-radius: 8px;
-}
-QPushButton#userStatus {
-    font-size: 20px;
-    text-align: center;
-    background: transparent;
-    border: 0px transparent;
-}
-QPushButton#userStatus:hover {
-    background: transparent;
-}
-QLabel {
-    background: transparent;
-}
-QLineEdit {
-    border: 1px solid #262D37;
-}
-QPushButton{
-    color: #262D37;
-    border: 1px solid #262D37;
-}
-QPushButton:hover{
-    background: #D9D9D9;
-}
-QComboBox{
-    border: 1px solid #262D37;
-}
-QPushButton#userName {
-    font-size: 24px;
-    text-align: center;
-    background: transparent;
-    border: 0px transparent;
-}
-QPushButton#userName:hover {
-    background: transparent;
-}
-QPushButton#menuButton {
-    text-align: left;
-    text-padding: 5px;
-    border: 0px transparent; 
-    border-radius: 8px;
-    background: transparent;
-}
-QPushButton#menuButton:hover {
-    background: #D9D9D9;
-}
-QWidget#profileWidget {
-    background: transparent;
-}
-QWidget#messengerWidget {
-    background: transparent
-}
-QWidget#friendsWidget {
-    background: transparent
-}
-QWidget#settingsWidget {
-    background: transparent
-}
-QPushButton#logoutButton:hover{
-    background: #F83A3A;
-    color: #fff;
-}
-""")
+        self.setStyleSheet(style_white)
         self.changeTheme_button.disconnect()
         self.changeTheme_button.clicked.connect(self.change_theme_dark)
         self.changeTheme_button.setIcon(self.theme_light)
@@ -1075,71 +906,7 @@ QPushButton#logoutButton:hover{
         self.close_button.setIcon(self.exit_dark)
 
     def change_theme_dark(self):
-        self.setStyleSheet(style)
-        self.setStyleSheet(
-            """
-QWidget {
-    background: #262D37;
-}
-QWidget#mainWindow{
-    background: #586376; 
-}
-QWidget#menuWidget {
-    border-right: 1px solid #fff;
-}
-QWidget#profileAddressWidget {
-    border: 1px solid #fff;
-    border-radius: 8px;
-}
-QWidget#profileMainInfoWidget {
-    border: 1px solid #fff;
-    border-radius: 8px;
-}
-QLabel {
-    background: transparent;
-}
-QPushButton:hover{
-    background: #50596A;
-}
-QPushButton#userName {
-    font-size: 24px;
-    text-align: center;
-    background: transparent;
-    border: 0px transparent;
-}
-QPushButton#userName:hover {
-    background: transparent;
-}
-QPushButton#userStatus {
-    font-size: 20px;
-    text-align: center;
-    background: transparent;
-    border: 0px transparent;
-}
-QPushButton#userStatus:hover {
-    background: transparent;
-}
-QPushButton#menuButton:hover{
-    background: #1E232B;
-}
-QWidget#profileWidget {
-    background: transparent;
-}
-QWidget#messengerWidget {
-    background: transparent
-}
-QWidget#friendsWidget {
-    background: transparent
-}
-QWidget#settingsWidget {
-    background: transparent
-}
-QPushButton#logoutButton:hover{
-    background: #F83A3A;
-    color: #fff;
-}
-            """
-        )
+        self.setStyleSheet(style_black)
         self.changeTheme_button.disconnect()
         self.changeTheme_button.clicked.connect(self.change_theme_light)
         self.changeTheme_button.setIcon(self.theme_dark)

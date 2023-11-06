@@ -1,0 +1,78 @@
+QWidget{
+    background: #ECECEC;
+    color: #262D37;
+}
+QWidget#mainWindow{
+    background: #fff;
+}
+QWidget#menuWidget {
+    border-right: 1px solid #262D37;
+}
+QWidget#profileAddressWidget {
+    border: 1px solid #262D37;
+    border-radius: 8px;
+}
+QWidget#profileMainInfoWidget {
+    border: 1px solid #262D37;
+    border-radius: 8px;
+}
+QPushButton#userStatus {
+    font-size: 20px;
+    text-align: center;
+    background: transparent;
+    border: 0px transparent;
+}
+QPushButton#userStatus:hover {
+    background: transparent;
+}
+QLabel {
+    background: transparent;
+}
+QLineEdit {
+    border: 1px solid #262D37;
+}
+QPushButton{
+    color: #262D37;
+    border: 1px solid #262D37;
+}
+QPushButton:hover{
+    background: #D9D9D9;
+}
+QComboBox{
+    border: 1px solid #262D37;
+}
+QPushButton#userName {
+    font-size: 24px;
+    text-align: center;
+    background: transparent;
+    border: 0px transparent;
+}
+QPushButton#userName:hover {
+    background: transparent;
+}
+QPushButton#menuButton {
+    text-align: left;
+    text-padding: 5px;
+    border: 0px transparent;
+    border-radius: 8px;
+    background: transparent;
+}
+QPushButton#menuButton:hover {
+    background: #D9D9D9;
+}
+QWidget#profileWidget {
+    background: transparent;
+}
+QWidget#messengerWidget {
+    background: transparent
+}
+QWidget#friendsWidget {
+    background: transparent
+}
+QWidget#settingsWidget {
+    background: transparent
+}
+QPushButton#logoutButton:hover{
+    background: #F83A3A;
+    color: #fff;
+}

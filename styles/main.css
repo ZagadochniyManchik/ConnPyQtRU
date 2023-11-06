@@ -1,0 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Prompt:wght@600&display=swap');
+QHBoxLayout{
+    border: 1px solid #fff;
+    border-radius: 12px;
+}
+QWidget{
+    background: #262D37;
+    color: #ffffff;
+}
+QWidget#menuWidget {
+    border-right: 1px solid #fff;
+}
+QHBoxLayout#layout_logo{
+    padding: 10px;
+}
+QComboBox{
+    border: 1px solid #ffffff;
+    border-radius: 8px;
+    font-size: 18px;
+    padding: 10px;
+}
+QPushButton{
+    color: #ffffff;
+    border: 1px solid #ffffff;
+    border-radius: 8px;
+    font-size: 18px;
+    padding: 10px;
+    background: #262D37;
+}
+QPushButton:hover{
+    background: #1E232B;
+}
+QPushButton#self.entryToAccount{
+    width: fit-content;
+}
+QLineEdit {
+    color: #ffffff;
+    border: 1px solid #ffffff;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 18px;
+}
+QComboBox{
+    color: #fff;
+}
+QLabel{
+    text-align: center;
+    font-family: 'Franklin Gothic Medium';
+    font-size: 20px;
+    background: transparent;
+}
+QLabel#login_label{
+    background: #fff;
+}
+QPushButton#userName {
+    font-size: 26px;
+    text-align: center;
+    background: transparent;
+    border: 0px transparent;
+}
+QPushButton#userName:hover {
+    background: transparent;
+}
+QPushButton#userStatus {
+    font-size: 20px;
+    text-align: center;
+    background: transparent;
+    border: 0px transparent;
+}
+QPushButton#userStatus:hover {
+    background: transparent;
+}
+QPushButton#menuButton {
+    text-align: left;
+    text-padding: 5px;
+    font-size: 22px;
+    border: 0px transparent; 
+    border-radius: 8px;
+    background: transparent;
+    padding: 20px;
+}
+QPushButton#menuButton:hover {
+    background: #1E232B;
+}
+QWidget#mainWindow {
+    background: #586376;
+}
+QWidget#profileAddressWidget {
+    border: 1px solid #fff;
+    border-radius: 8px;
+}
+QWidget#profileMainInfoWidget {
+    border: 1px solid #fff;
+    border-radius: 8px;
+}
+QWidget#profileWidget {
+    background: transparent
+}
+QWidget#messengerWidget {
+    background: transparent
+}
+QWidget#friendsWidget {
+    background: transparent
+}
+QWidget#settingsWidget {
+    background: transparent
+}
+QLabel#titleLabel{
+    font-size: 36px
+}
+QPushButton#logoutButton:hover{
+    background: #F83A3A;
+    color: #fff;
+}
+QLabel#userPfp {
+    border: 0px transparent;
+}
