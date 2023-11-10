@@ -1,64 +1,14 @@
+import threading
 import time
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from threading import *
+from server_object import *
 import sys
 import socket
 import pickle
 import hashlib
 import keyboard
-
-threads = {}
-
-style = ''
-with open('styles/main.css', 'r', encoding='utf-8') as file:
-    style += '\n'.join(file.readlines())
-style_white = ''
-with open('styles/main_white.css', 'r', encoding='utf-8') as file:
-    style_white += '\n'.join(file.readlines())
-style_black = ''
-with open('styles/main_black.css', 'r', encoding='utf-8') as file:
-    style_black += '\n'.join(file.readlines())
-
-
-def pencode(data):
-    return pickle.dumps(data)
-
-
-def pdecode(data):
-    return pickle.loads(data)
-
-
-class ServerObject:
-    def __init__(self):
-        self.static_data = None
-        self.data = None
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    def connect_with(self):
-        self.server.connect(('127.0.0.1', 25565))
-
-    def close_with(self):
-        self.request(pencode('None') + b'<END>' + pencode('<CLOSE-CONNECTION>') + b'<END>')
-
-    def listen_for(self):
-        while True:
-            data = self.server.recv(1024)
-            if data == b'<NOTIFICATION-MESSAGE>':
-                data = self.server.recv(1024)
-                break
-        return data
-
-    def request(self, data):
-        self.server.send(data)
-
-    def receive(self):
-        # self.data = b''
-        # while True:
-        #     self.data += self.server.recv(1024)
-        #     if self.data[-13:] == b'<END-MESSAGE>':
-        #         break
-        return pdecode(self.server.recv(2048))
 
 
 class NotificationHandler:
@@ -309,22 +259,29 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, user_data):
         super().__init__()
 
-        self.name = None
-        self.request_status = None
+        self.user_data = user_data
         self.allowed_methods = {
             '<SET-USER-DATA>': 'set_user_data',
             '<SET-REQUEST-STATUS>': 'set_request_status',
             '<SET-USER-SOCIAL>': 'set_user_social',
-            '<LOAD-FRIENDS>': 'load_friends'
+            '<LOAD-FRIENDS>': 'load_friends',
+            '<ADD-FRIEND>': 'add_friend',
+            '<GET-IMAGE>': 'get_image',
+            '<SEND-IMAGE>': 'send_image'
         }
+        self.communicate = Communicate()
+        self.communicate.signal.connect(self.display_friends)
 
         self.status = None
-        self.server = ServerObject()
-        self.server.connect_with()
-        self.user_data = user_data
         self.user_social = None
         self.friends = None
+        self.static_image = b""
+        self.name = None
+        self.request_status = None
         self.friends_data = {}
+
+        self.server = ServerObject()
+        self.server.connect_with()
 
         listen_to_server_thr = Thread(target=self.listen_to_server, name='listen_to_server', daemon=True)
         threads['listen_to_server'] = listen_to_server_thr
@@ -336,10 +293,15 @@ class MainWindow(QtWidgets.QMainWindow):
         time.sleep(0.1)
         self.server.request(pencode(self.user_data) + b"<END>" + pencode('<SEND-USER-SOCIAL>') + b"<END>")
         time.sleep(0.1)
-        print(self.user_social)
-
+        pfp_image_data = {'id': self.user_data.get('id'), 'image_name': 'pfp'}
+        self.server.request(pencode(pfp_image_data) + b"<END>" + pencode('<SEND-IMAGE>') + b"<END>")
+        time.sleep(0.3)
         self.remember_login()
 
+        self.init_images()
+        self.init_ui()
+
+    def init_images(self):
         # !!! Images rise
         self.logo_image = QtGui.QPixmap("images/icon_photo.png").scaled(80, 80, QtCore.Qt.KeepAspectRatio)
         self.chat_dark = QtGui.QIcon("images/chat_dark.png")
@@ -367,9 +329,9 @@ class MainWindow(QtWidgets.QMainWindow):
         except FileNotFoundError:
             self.userPfp_image = QtGui.QPixmap("images/pfp_image_standard.png").scaled(180, 180)
             self.userPfp_image = self.round_image(self.userPfp_image)
-
         # !!! Images end
 
+    def init_ui(self):
         # !!! Window rise
         self.setWindowTitle("ConnQtPy")
         self.resize(1280, 720)
@@ -506,7 +468,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.userPfp_label = QtWidgets.QLabel()
         self.userPfp_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        
+
         self.userPfp_label.setObjectName('userPfp')
         self.userPfp_label.setPixmap(self.userPfp_image)
         self.userPfp_label.mousePressEvent = self.change_user_pfp
@@ -586,16 +548,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.friendsTitle_label.setObjectName('titleLabel')
 
         self.addFriend_input = QtWidgets.QLineEdit()
-        self.addFriend_input.setPlaceholderText('Введите логин или ID, того, кого хотите добавить...')
-
+        self.addFriend_input.setPlaceholderText('Введите логин, того, кого хотите добавить...')
         self.confirmAddFriend_button = QtWidgets.QPushButton('OK')
+        self.confirmAddFriend_button.clicked.connect(
+            lambda: self.other_thread('<ADD-FRIEND>', {'static': 'None'})
+        )
 
         self.friendsList_widget = QtWidgets.QWidget()
         self.friendsList_layout = QtWidgets.QVBoxLayout()
 
-        self.server.request(pencode({'method': '<LOAD-FRIENDS>'}) + b"<END>" +
-                            pencode('<CALL-CLIENT-METHOD>') + b"<END>")
-        time.sleep(0.01)
+        self.other_thread('<LOAD-FRIENDS>', {'None': 'None'})
+        time.sleep(0.5)
+        self.load_friends_pfp({})
+        time.sleep(0.5)
         for widget in list(self.display_friends('static')):
             self.friendsList_layout.addWidget(widget)
 
@@ -604,8 +569,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.friendsList_widget.setLayout(self.friendsList_layout)
         self.friendsList_scrollbar = QtWidgets.QScrollArea()
-        self.friendsList_scrollbar.setMaximumSize(2000, 8000)
-        self.friendsList_scrollbar.setWidget(self.friendsList_widget)
+        self.friendsScrollbar_layout = QtWidgets.QFormLayout()
+        self.friendsList_scrollbar.setLayout(self.friendsScrollbar_layout)
+        self.friendsScrollbar_layout.addRow(self.friendsList_widget)
 
         self.friends_layout.addWidget(self.friendsTitle_label, 0, 0)
         self.friends_layout.addWidget(self.addFriend_input, 1, 0)
@@ -685,6 +651,32 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.central_widget)
         # !!! Window end
 
+    def add_friend(self, static):
+        friend_login = self.addFriend_input.text()
+
+        self.server.request(
+            pencode({'id':self.user_data.get('id'), 'friend_login': friend_login,
+            'user_login': self.user_data.get('login')}) + b"<END>" +
+            pencode('<ADD-FRIEND>') + b"<END>"
+        )
+        status = self.server.receive()
+        if status != '<SUCCESS>':
+            # QtWidgets.QMessageBox.warning(None, 'Предупреждение', status)
+            print(status)
+            self.addFriend_input.setText('')
+            return
+
+        new_friends = self.user_social.get('friends') + friend_login.encode('utf-8') + b"<NEXT>"
+        self.user_social['friends'] = new_friends
+
+        # QtWidgets.QMessageBox.information(None, 'Информация', 'Заявка отправлена')
+        print('Заявка отправлена')
+        self.addFriend_input.setText('')
+
+        self.load_friends({})
+        self.load_friends_pfp({})
+        self.communicate.signal.emit()
+
     def change_user_pfp(self, *args, **kwargs):
         file_name, file_type = QtWidgets.QFileDialog.getOpenFileName(
             self, "Выбрать файл", ".",
@@ -700,6 +692,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.userPfp_image = QtGui.QPixmap(file_name).scaled(180, 180)
         self.userPfp_image = self.round_image(self.userPfp_image)
         self.userPfp_label.setPixmap(self.userPfp_image)
+        #
+        self.server.request(
+            pencode({'data': {'image_path': file_name, 'image_name': 'pfp'}, 'method': '<SEND-IMAGE>'}) + b"<END>" +
+            pencode('<CALL-CLIENT-METHOD>') + b"<END>"
+        )
 
     def change_user_password(self):
         self.changePassword_button.setEnabled(False)
@@ -931,6 +928,8 @@ class MainWindow(QtWidgets.QMainWindow):
         painter.drawRoundedRect(image.rect(), 100, 100)
         return rounded
 
+    # Next functions is more for work with serverobject
+
     def listen_to_server(self):
         while True:
             status = self.server.listen_for()
@@ -951,37 +950,93 @@ class MainWindow(QtWidgets.QMainWindow):
         self.friends = [el.decode() for el in self.user_social.get('friends').split(b'<NEXT>')[:-1]]
         print(f"UserFriends: ")
         print(self.friends)
-        self.server.receive()
 
     def load_friends(self, static):
+        self.static_image = static
         friends = self.friends
 
-        for login in friends:
-            self.server.request(pencode({'login': login}) + b"<END>" + pencode('<SEND-FRIEND-DATA>') + b"<END>")
-            self.friends_data[login] = self.server.receive()
+        try:
+            for login in friends:
+                self.server.request(pencode({'login': login}) + b"<END>" + pencode('<SEND-FRIEND-DATA>') + b"<END>")
+                self.friends_data[login] = self.server.receive()
+        except TypeError:
+            pass
 
         print('Friends Data: ')
         print(self.friends_data)
 
-    def display_friends(self, static):
+    def load_friends_pfp(self, static):
+        self.status = static
+
         for friend_data in self.friends_data.values():
+            id = friend_data.get('id')
+            pfp_image_data = {'id': id, 'image_name': f'friend_{id}_pfp'}
+            self.server.request(pencode(pfp_image_data) + b"<END>" + pencode('<SEND-IMAGE>') + b"<END>")
+            time.sleep(0.1)
+
+    def display_friends(self, static):
+        self.status = static
+        for friend_data in self.friends_data.values():
+            id = friend_data.get('id')
+            pfp_image = self.round_image(
+                QtGui.QPixmap(f'images/friends_images/friend_{id}_pfp_image.png').scaled(55, 55))
             user_widget = QtWidgets.QWidget()
-            user_widget.setMinimumWidth(800)
             user_layout = QtWidgets.QGridLayout()
             user_widget.setLayout(user_layout)
             user = QtWidgets.QLabel(friend_data.get('name'))
             user.setObjectName('titleLabel')
             show_user = QtWidgets.QPushButton('Показать профиль')
+            user_pfp = QtWidgets.QLabel()
+            user_pfp.setPixmap(pfp_image)
 
-            user_layout.addWidget(user, 0, 0)
-            user_layout.addWidget(show_user, 0, 2)
+            user_layout.addWidget(user_pfp, 0, 0)
+            user_layout.addWidget(user, 0, 1)
+            user_layout.addWidget(show_user, 0, 3)
             user_layout.setColumnStretch(1, 2)
-            user_layout.addWidget(QtWidgets.QLabel(friend_data.get('status')), 1, 0)
+            user_layout.addWidget(QtWidgets.QLabel(friend_data.get('status')), 1, 1)
 
             yield user_widget
 
+    def send_image(self, data):
+        id = self.user_data.get('id')
+        with open(data.get("image_path"), 'rb') as image:
+            image_bytes = image.read()
+
+        self.server.request(
+            pencode({'id': id, 'image_name': data.get('image_name')}) + b"<END>" +
+            pencode('<SET-IMAGE>') + b"<END>"
+        )
+        self.server.server.sendall(image_bytes)
+        self.server.server.send(b"<IMAGE-END>")
+
+    def get_image(self, data):
+        image_name = data.get('image_name')
+        image_bytes = b""
+
+        done = False
+        while not done:
+            image = self.server.server.recv(4096)
+            if image[-11:] == b"<IMAGE-END>":
+                image_bytes += image.split(b"<IMAGE-END>")[0]
+                done = True
+            else:
+                image_bytes += image
+
+        self.status = self.server.server.recv(4096)
+
+        if 'friend' in image_name:
+            with open(f'images/friends_images/{image_name}_image.png', 'wb') as image:
+                image.write(image_bytes)
+        else:
+            with open(f'images/{image_name}_image.png', 'wb') as image:
+                image.write(image_bytes)
+
     def set_request_status(self, status):
         self.request_status = status
+
+    def other_thread(self, method, data):
+        self.server.request(pencode({'method': method, 'data': data}) + b"<END>" +
+                            pencode('<CALL-CLIENT-METHOD>') + b"<END>")
 
     def remember_login(self):
         with open('static/lastlogin.txt', 'wb') as file:
@@ -1013,6 +1068,10 @@ class MainWindow(QtWidgets.QMainWindow):
         exit()
 
 
+class Communicate(QtCore.QObject):
+    signal = QtCore.pyqtSignal()
+
+
 def last_login():
     data = []
     with open('static/lastlogin.txt', 'rb') as file:
@@ -1021,6 +1080,18 @@ def last_login():
         return pdecode(data[-1])
     else:
         return None
+
+
+def read_styles():
+    global style
+    global style_white
+    global style_black
+    with open('styles/main.css', 'r', encoding='utf-8') as file:
+        style += '\n'.join(file.readlines())
+    with open('styles/main_white.css', 'r', encoding='utf-8') as file:
+        style_white += '\n'.join(file.readlines())
+    with open('styles/main_black.css', 'r', encoding='utf-8') as file:
+        style_black += '\n'.join(file.readlines())
 
 
 def main_thread():
@@ -1037,6 +1108,12 @@ def main_thread():
 
 
 if __name__ == "__main__":
+    style = ''
+    style_white = ''
+    style_black = ''
+    read_styles()
+    threads = {}
+
     main_thr = Thread(target=main_thread(), name='main_thread', daemon=True)
     threads['main_thread'] = main_thr
     main_thr.start()
